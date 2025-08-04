@@ -20,7 +20,7 @@ async function main() {
   console.log('AlgebraBasePluginV1 Implementation to:', bpImplementation.target);
 
   const BasePluginV1Factory = await hre.ethers.getContractFactory('BasePluginV1Factory');
-  const dsFactory = await BasePluginV1Factory.deploy(Config.BLAST_GOVERNOR, deploysData.factory, bpImplementation.target);
+  const dsFactory = await BasePluginV1Factory.deploy(deploysData.factory, bpImplementation.target);
 
   await dsFactory.waitForDeployment();
 

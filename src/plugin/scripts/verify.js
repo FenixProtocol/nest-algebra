@@ -17,7 +17,7 @@ async function main() {
 
   await hre.run('verify:verify', {
     address: BasePluginV1Factory,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.factory, deploysData.AlgebraBasePluginV1],
+    constructorArguments: [deploysData.factory, deploysData.AlgebraBasePluginV1],
   });
   await hre.run('verify:verify', {
     address: deploysData.AlgebraBasePluginV1,

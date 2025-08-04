@@ -21,17 +21,17 @@ async function main() {
 
   await hre.run('verify:verify', {
     address: deploysData.quoter,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.factory, deploysData.wrapped, deploysData.poolDeployer],
+    constructorArguments: [deploysData.factory, deploysData.wrapped, deploysData.poolDeployer],
   });
 
   await hre.run('verify:verify', {
     address: deploysData.quoterV2,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.factory, deploysData.wrapped, deploysData.poolDeployer],
+    constructorArguments: [deploysData.factory, deploysData.wrapped, deploysData.poolDeployer],
   });
 
   await hre.run('verify:verify', {
     address: deploysData.swapRouter,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.factory, deploysData.wrapped, deploysData.poolDeployer],
+    constructorArguments: [deploysData.factory, deploysData.wrapped, deploysData.poolDeployer],
   });
 
   await hre.run('verify:verify', {
@@ -41,13 +41,7 @@ async function main() {
 
   await hre.run('verify:verify', {
     address: deploysData.nonfungiblePositionManager,
-    constructorArguments: [
-      Config.BLAST_GOVERNOR,
-      deploysData.factory,
-      deploysData.wrapped,
-      deploysData.proxy,
-      deploysData.poolDeployer,
-    ],
+    constructorArguments: [deploysData.factory, deploysData.wrapped, deploysData.proxy, deploysData.poolDeployer],
   });
   await hre.run('verify:verify', {
     address: deploysData.proxy,
@@ -55,7 +49,7 @@ async function main() {
   });
   await hre.run('verify:verify', {
     address: deploysData.AlgebraInterfaceMulticall,
-    constructorArguments: [Config.BLAST_GOVERNOR],
+    constructorArguments: [],
   });
   await hre.run('verify:verify', {
     address: deploysData.NonfungibleTokenPositionDescriptor,

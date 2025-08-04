@@ -27,17 +27,17 @@ async function main() {
 
   await hre.run('verify:verify', {
     address: deploysData.poolDeployer,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.factory],
+    constructorArguments: [deploysData.factory],
   });
 
   await hre.run('verify:verify', {
     address: deploysData.vault,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.factory, deploysData.poolDeployer],
+    constructorArguments: [deploysData.factory, deploysData.poolDeployer],
   });
 
   await hre.run('verify:verify', {
     address: deploysData.vaultFactory,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.vault],
+    constructorArguments: [deploysData.vault],
   });
 }
 

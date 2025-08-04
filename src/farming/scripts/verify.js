@@ -16,12 +16,12 @@ async function main() {
 
   await hre.run('verify:verify', {
     address: deploysData.eternal,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.poolDeployer, deploysData.nonfungiblePositionManager],
+    constructorArguments: [deploysData.poolDeployer, deploysData.nonfungiblePositionManager],
   });
 
   await hre.run('verify:verify', {
     address: deploysData.fc,
-    constructorArguments: [Config.BLAST_GOVERNOR, deploysData.eternal, deploysData.nonfungiblePositionManager],
+    constructorArguments: [deploysData.eternal, deploysData.nonfungiblePositionManager],
   });
 }
 

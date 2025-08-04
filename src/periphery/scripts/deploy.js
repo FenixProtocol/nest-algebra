@@ -32,12 +32,7 @@ async function main() {
   // arg1 factory address
   // arg2 wnative address
   const QuoterFactory = await hre.ethers.getContractFactory('Quoter');
-  const Quoter = await QuoterFactory.deploy(
-    Config.BLAST_GOVERNOR,
-    deploysData.factory,
-    WNativeTokenAddress,
-    deploysData.poolDeployer
-  );
+  const Quoter = await QuoterFactory.deploy(deploysData.factory, WNativeTokenAddress, deploysData.poolDeployer);
 
   await Quoter.waitForDeployment();
 
@@ -47,12 +42,7 @@ async function main() {
   // arg1 factory address
   // arg2 wnative address
   const QuoterV2Factory = await hre.ethers.getContractFactory('QuoterV2');
-  const QuoterV2 = await QuoterV2Factory.deploy(
-    Config.BLAST_GOVERNOR,
-    deploysData.factory,
-    WNativeTokenAddress,
-    deploysData.poolDeployer
-  );
+  const QuoterV2 = await QuoterV2Factory.deploy(deploysData.factory, WNativeTokenAddress, deploysData.poolDeployer);
 
   await QuoterV2.waitForDeployment();
   deploysData.quoterV2 = QuoterV2.target;
@@ -62,12 +52,7 @@ async function main() {
   // arg1 factory address
   // arg2 wnative address
   const SwapRouterFactory = await hre.ethers.getContractFactory('SwapRouter');
-  const SwapRouter = await SwapRouterFactory.deploy(
-    Config.BLAST_GOVERNOR,
-    deploysData.factory,
-    WNativeTokenAddress,
-    deploysData.poolDeployer
-  );
+  const SwapRouter = await SwapRouterFactory.deploy(deploysData.factory, WNativeTokenAddress, deploysData.poolDeployer);
 
   await SwapRouter.waitForDeployment();
 
@@ -113,7 +98,6 @@ async function main() {
   // // arg3 tokenDescriptor address
   const NonfungiblePositionManagerFactory = await hre.ethers.getContractFactory('NonfungiblePositionManager');
   const NonfungiblePositionManager = await NonfungiblePositionManagerFactory.deploy(
-    Config.BLAST_GOVERNOR,
     deploysData.factory,
     WNativeTokenAddress,
     Proxy.target,
@@ -139,7 +123,7 @@ async function main() {
   // await V3Migrator.waitForDeployment();
 
   const AlgebraInterfaceMulticallFactory = await hre.ethers.getContractFactory('AlgebraInterfaceMulticall');
-  const AlgebraInterfaceMulticall = await AlgebraInterfaceMulticallFactory.deploy(Config.BLAST_GOVERNOR);
+  const AlgebraInterfaceMulticall = await AlgebraInterfaceMulticallFactory.deploy();
 
   await AlgebraInterfaceMulticall.waitForDeployment();
   deploysData.AlgebraInterfaceMulticall = AlgebraInterfaceMulticall.target;
