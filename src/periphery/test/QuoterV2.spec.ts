@@ -37,12 +37,7 @@ describe('QuoterV2', function () {
 
     const [dep] = await ethers.getSigners();
     const quoterFactory = await ethers.getContractFactory('QuoterV2');
-    quoter = (await quoterFactory.deploy(
-      dep.address,
-      factory,
-      wnative,
-      await factory.poolDeployer()
-    )) as any as QuoterV2;
+    quoter = (await quoterFactory.deploy(factory, wnative, await factory.poolDeployer())) as any as QuoterV2;
 
     return {
       tokens: _tokens,

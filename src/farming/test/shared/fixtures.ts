@@ -43,12 +43,7 @@ import {
 import { FeeAmount, encodePriceSqrt, MAX_GAS_LIMIT } from '../shared';
 import { ActorFixture } from './actors';
 import { IBasePluginV1Factory, IAlgebraBasePluginV1 } from '@cryptoalgebra/integral-base-plugin/typechain';
-import {
-  abi as BLAST_POINTS_MOCK_ABI,
-  bytecode as BLAST_POINTS_MOCK_BYTECODE,
-} from '@cryptoalgebra/integral-core/artifacts/contracts/test/BlastPointsMock.sol/BlastPointsMock.json';
-import { setCode } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import { AlgebraFactoryUpgradeable, BlastMock__factory, BlastPointsMock } from '@cryptoalgebra/integral-core/typechain';
+import { AlgebraFactoryUpgradeable } from '@cryptoalgebra/integral-core/typechain';
 
 type WNativeTokenFixture = { wnative: IWNativeToken };
 
@@ -63,18 +58,10 @@ export const wnativeFixture: () => Promise<WNativeTokenFixture> = async () => {
   return { wnative };
 };
 
-export async function mockBlastPart() {
-  await setCode('0x4300000000000000000000000000000000000002', BlastMock__factory.bytecode);
-  const factory = await ethers.getContractFactory(BLAST_POINTS_MOCK_ABI, BLAST_POINTS_MOCK_BYTECODE);
-  const blastPointsMock = (await factory.deploy()) as any as BlastPointsMock;
-
-  return blastPointsMock;
-}
-
-export async function createEmptyFactoryProxy(governor: string): Promise<AlgebraFactoryUpgradeable> {
+export async function createEmptyFactoryProxy(): Promise<AlgebraFactoryUpgradeable> {
   const factoryFactory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
 
-  const factoryImplementation = await factoryFactory.deploy(governor);
+  const factoryImplementation = await factoryFactory.deploy();
   const proxyAdminFactory = await ethers.getContractFactory(PROXY_ADMIN_ABI, PROXY_ADMIN_BYTECODE);
 
   const proxyAdmin = await proxyAdminFactory.deploy();
@@ -85,30 +72,22 @@ export async function createEmptyFactoryProxy(governor: string): Promise<Algebra
   return factoryFactory.attach(proxy.target) as any as AlgebraFactoryUpgradeable;
 }
 const v3CoreFactoryFixture: () => Promise<[IAlgebraFactory, IAlgebraPoolDeployer, IBasePluginV1Factory, Signer]> = async () => {
-  let blastPoints = await mockBlastPart();
-
-  const [deployer, blastGovernor, blastPointsOperator] = await ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
   // precompute
   const poolDeployerAddress = getCreateAddress({
     from: deployer.address,
     nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 4,
   });
 
-  const _factory = await createEmptyFactoryProxy(blastGovernor.address);
-  await _factory.initialize(blastGovernor.address, blastPoints.target, blastPointsOperator.address, poolDeployerAddress);
+  const _factory = await createEmptyFactoryProxy();
+  await _factory.initialize(poolDeployerAddress);
 
   const poolDeployerFactory = await ethers.getContractFactory(AlgebraPoolDeployerJson.abi, AlgebraPoolDeployerJson.bytecode);
-  const _deployer = (await poolDeployerFactory.deploy(blastGovernor.address, _factory)) as any as IAlgebraPoolDeployer;
+  const _deployer = (await poolDeployerFactory.deploy(_factory)) as any as IAlgebraPoolDeployer;
   const basePluginFactory = await ethers.getContractFactory(PLUGIN_ABI, PLUGIN_BYTECODE);
 
   const pluginContractFactory = await ethers.getContractFactory(PLUGIN_FACTORY_ABI, PLUGIN_FACTORY_BYTECODE);
-  const pluginFactory = (await pluginContractFactory.deploy(
-    blastGovernor.address,
-    _factory,
-    (
-      await basePluginFactory.deploy()
-    ).target
-  )) as any as IBasePluginV1Factory;
+  const pluginFactory = (await pluginContractFactory.deploy(_factory, (await basePluginFactory.deploy()).target)) as any as IBasePluginV1Factory;
 
   await _factory.setDefaultPluginFactory(pluginFactory);
   await _factory.setIsPublicPoolCreationMode(true);
@@ -124,11 +103,10 @@ export const v3RouterFixture: () => Promise<{
   pluginFactory: IBasePluginV1Factory;
   ownerSigner: Signer;
 }> = async () => {
-  const [depl] = await ethers.getSigners();
   const { wnative } = await wnativeFixture();
   const [factory, deployer, pluginFactory, ownerSigner] = await v3CoreFactoryFixture();
   const routerFactory = await ethers.getContractFactory(SwapRouter.abi, SwapRouter.bytecode);
-  const router = (await routerFactory.deploy(depl.address, factory, wnative, deployer)) as any as ISwapRouter;
+  const router = (await routerFactory.deploy(factory, wnative, deployer)) as any as ISwapRouter;
 
   return { factory, wnative, deployer, router, pluginFactory, ownerSigner };
 };
@@ -185,9 +163,8 @@ export const algebraFactoryFixture: () => Promise<AlgebraFactoryFixture> = async
   const positionDescriptor = await NFTDescriptorFactory.deploy(tokens[0], 'ETH', []);
 
   const nftFactory = await ethers.getContractFactory(NonfungiblePositionManagerJson.abi, NonfungiblePositionManagerJson.bytecode);
-  const [deploy] = await ethers.getSigners();
 
-  const nft = (await nftFactory.deploy(deploy.address, factory, wnative, positionDescriptor, deployer)) as any as INonfungiblePositionManager;
+  const nft = (await nftFactory.deploy(factory, wnative, positionDescriptor, deployer)) as any as INonfungiblePositionManager;
   for (const token of tokens) {
     token.address = await token.getAddress();
   }
@@ -297,11 +274,11 @@ export const algebraFixture: () => Promise<AlgebraFixtureType> = async () => {
   const incentiveCreator = new ActorFixture(wallets, ethers.provider).incentiveCreator();
 
   const eternalFarmingFactory = await ethers.getContractFactory('AlgebraEternalFarming', signer);
-  const eternalFarming = (await eternalFarmingFactory.deploy(wallets[0].address, deployer, nft)) as any as AlgebraEternalFarming;
+  const eternalFarming = (await eternalFarmingFactory.deploy(deployer, nft)) as any as AlgebraEternalFarming;
 
   const farmingCenterFactory = await ethers.getContractFactory('FarmingCenter', signer);
 
-  const farmingCenter = (await farmingCenterFactory.deploy(wallets[1].address, eternalFarming, nft)) as any as FarmingCenter;
+  const farmingCenter = (await farmingCenterFactory.deploy(eternalFarming, nft)) as any as FarmingCenter;
 
   await nft.setFarmingCenter(farmingCenter);
 
