@@ -9,13 +9,12 @@ import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/LiquidityMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickManagement.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolErrors.sol';
-import '@cryptoalgebra/integral-core/contracts/base/BlastGovernorSetup.sol';
 
 import '../base/VirtualTickStructure.sol';
 
 /// @title Algebra Integral 1.0 eternal virtual pool
 /// @notice used to track active liquidity in farming and distribute rewards
-contract EternalVirtualPool is Timestamp, VirtualTickStructure, BlastGovernorSetup {
+contract EternalVirtualPool is Timestamp, VirtualTickStructure {
   using TickManagement for mapping(int24 => TickManagement.Tick);
 
   /// @inheritdoc IAlgebraEternalVirtualPool
@@ -46,8 +45,7 @@ contract EternalVirtualPool is Timestamp, VirtualTickStructure, BlastGovernorSet
     _;
   }
 
-  constructor(address _blastGovernor, address _farmingAddress, address _plugin) {
-    __BlastGovernorSetup_init(_blastGovernor);
+  constructor(address _farmingAddress, address _plugin) {
     farmingAddress = _farmingAddress;
     plugin = _plugin;
 

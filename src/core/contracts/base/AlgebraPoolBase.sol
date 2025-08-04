@@ -16,12 +16,11 @@ import '../libraries/Constants.sol';
 import '../libraries/Plugins.sol';
 
 import './common/Timestamp.sol';
-import './BlastERC20RebasingManage.sol';
 
 /// @title Algebra pool base abstract contract
 /// @notice Contains state variables, immutables and common internal functions
 /// @dev Decoupling into a separate abstract contract simplifies testing
-abstract contract AlgebraPoolBase is IAlgebraPool, Timestamp, BlastERC20RebasingManage {
+abstract contract AlgebraPoolBase is IAlgebraPool, Timestamp {
   using TickManagement for mapping(int24 => TickManagement.Tick);
 
   /// @notice The struct with important state values of pool
@@ -97,12 +96,8 @@ abstract contract AlgebraPoolBase is IAlgebraPool, Timestamp, BlastERC20Rebasing
 
   constructor() {
     address _plugin;
-    address _blastGovernor;
-    address _blastPoints;
-    address _blastPointsOperator;
 
-    (_blastGovernor, _blastPoints, _blastPointsOperator, _plugin, factory, token0, token1) = _getDeployParameters();
-    __BlastERC20RebasingManage__init(_blastGovernor, _blastPoints, _blastPointsOperator);
+    (_plugin, factory, token0, token1) = _getDeployParameters();
 
     (prevTickGlobal, nextTickGlobal) = (TickMath.MIN_TICK, TickMath.MAX_TICK);
     globalState.unlocked = true;
@@ -151,7 +146,7 @@ abstract contract AlgebraPoolBase is IAlgebraPool, Timestamp, BlastERC20Rebasing
 
   /// @dev Gets the parameter values ​​for creating the pool. They are not passed in the constructor to make it easier to use create2 opcode
   /// Can be overridden in tests
-  function _getDeployParameters() internal virtual returns (address, address, address, address, address, address, address) {
+  function _getDeployParameters() internal virtual returns (address, address, address, address) {
     return IAlgebraPoolDeployer(msg.sender).getDeployParameters();
   }
 
