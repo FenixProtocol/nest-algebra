@@ -80,68 +80,12 @@ export default {
       url: `https://rpc-test.arthera.net`,
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    },
-    blastScanSepolia: {
-      url: `https://blast-sepolia.infura.io/v3/${INFURA_ID_PROJECT}`,
-      gasPrice: 1e3,
-      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    },
-    blastSepolia: {
-      url: `https://blast-sepolia.infura.io/v3/${INFURA_ID_PROJECT}`,
-      gasPrice: 1e3,
-      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    },
-    blastMainnet: {
-      url: `https://blast-mainnet.infura.io/v3/${INFURA_ID_PROJECT}`,
-      gasPrice: 1e3,
-      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    },
-    blastScanMainnet: {
-      url: `https://blast-mainnet.infura.io/v3/${INFURA_ID_PROJECT}`,
-      gasPrice: 1e3,
-      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    },
+    }
   },
   etherscan: {
     apiKey: {
-      blastSepolia: 'blastSepolia', // apiKey is not required, just set a placeholder
-      blastMainnet: 'blastMainnet',
-      blastScanMainnet: `${API_KEY}`,
-      blastScanSepolia: `${API_KEY}`,
     },
     customChains: [
-      {
-        network: 'blastScanSepolia',
-        chainId: 168587773,
-        urls: {
-          apiURL: 'https://api-sepolia.blastscan.io/api',
-          browserURL: 'https://sepolia.blastscan.io/',
-        },
-      },
-      {
-        network: 'blastMainnet',
-        chainId: 81457,
-        urls: {
-          apiURL: 'https://api.routescan.io/v2/network/mainnet/evm/81457/etherscan',
-          browserURL: 'https://blastexplorer.io',
-        },
-      },
-      {
-        network: 'blastScanMainnet',
-        chainId: 81457,
-        urls: {
-          apiURL: 'https://api.blastscan.io/api',
-          browserURL: 'https://blastscan.io/',
-        },
-      },
-      {
-        network: 'blastSepolia',
-        chainId: 168587773,
-        urls: {
-          apiURL: 'https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan',
-          browserURL: 'https://testnet.blastscan.io',
-        },
-      },
       {
         network: 'mantleTestnet',
         chainId: 5001,
