@@ -12,7 +12,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/FenixProtocol/fenix-algebra"
+    "url": "https://github.com/FenixProtocol/nest-algebra"
   },
   "files": [
     "contracts/base",
@@ -39,7 +39,7 @@
     "precommit": "pretty-quick --staged --pattern **/*.sol",
     "solhint": "solhint ./contracts/**/*.sol",
     "coverage": "npm --prefix ../core run compile && hardhat coverage"
-    },
+  },
   "engines": {
     "npm": ">=8.0.0",
     "node": ">=14.0.0"
