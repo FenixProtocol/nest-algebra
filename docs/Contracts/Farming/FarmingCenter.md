@@ -9,7 +9,7 @@ Algebra Integral 1.0 main farming contract
 
 *Developer note: Manages farmings and performs entry, exit and other actions.*
 
-**Inherits:** [IFarmingCenter](interfaces/IFarmingCenter.md) [IPositionFollower](../Periphery/interfaces/IPositionFollower.md) [Multicall](../Periphery/base/Multicall.md) [BlastGovernorSetup](../Core/base/BlastGovernorSetup.md)
+**Inherits:** [IFarmingCenter](interfaces/IFarmingCenter.md) [IPositionFollower](../Periphery/interfaces/IPositionFollower.md) [Multicall](../Periphery/base/Multicall.md)
 ## Modifiers
 ### isApprovedOrOwner
 
@@ -84,14 +84,13 @@ Returns incentive key for specific incentiveId
 ### constructor
 
 ```solidity
-constructor(address _blastGovernor, contract IAlgebraEternalFarming _eternalFarming, contract INonfungiblePositionManager _nonfungiblePositionManager) public
+constructor(contract IAlgebraEternalFarming _eternalFarming, contract INonfungiblePositionManager _nonfungiblePositionManager) public
 ```
 
 
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _blastGovernor | address |  |
 | _eternalFarming | contract IAlgebraEternalFarming |  |
 | _nonfungiblePositionManager | contract INonfungiblePositionManager |  |
 

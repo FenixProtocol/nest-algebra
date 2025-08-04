@@ -10,7 +10,7 @@ Wraps Algebra positions in the ERC721 non-fungible token interface
 *Developer note: Credit to Uniswap Labs under GPL-2.0-or-later license:
 https://github.com/Uniswap/v3-periphery*
 
-**Inherits:** [INonfungiblePositionManager](interfaces/INonfungiblePositionManager.md) [Multicall](base/Multicall.md) [ERC721Permit](base/ERC721Permit.md) [PeripheryImmutableState](base/PeripheryImmutableState.md) [PoolInitializer](base/PoolInitializer.md) [LiquidityManagement](base/LiquidityManagement.md) PeripheryValidation [SelfPermit](base/SelfPermit.md) [BlastGovernorSetup](../Core/base/BlastGovernorSetup.md)
+**Inherits:** [INonfungiblePositionManager](interfaces/INonfungiblePositionManager.md) [Multicall](base/Multicall.md) [ERC721Permit](base/ERC721Permit.md) [PeripheryImmutableState](base/PeripheryImmutableState.md) [PoolInitializer](base/PoolInitializer.md) [LiquidityManagement](base/LiquidityManagement.md) PeripheryValidation [SelfPermit](base/SelfPermit.md)
 ## Modifiers
 ### isAuthorizedForToken
 
@@ -89,14 +89,13 @@ Returns the address of farming in which this token is farmed, if any
 ### constructor
 
 ```solidity
-constructor(address _blastGovernor, address _factory, address _WNativeToken, address _tokenDescriptor_, address _poolDeployer) public
+constructor(address _factory, address _WNativeToken, address _tokenDescriptor_, address _poolDeployer) public
 ```
 
 
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _blastGovernor | address |  |
 | _factory | address |  |
 | _WNativeToken | address |  |
 | _tokenDescriptor_ | address |  |

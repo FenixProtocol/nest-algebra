@@ -86,16 +86,3 @@ creates the community fee vault for the pool if needed
 | ---- | ---- | ----------- |
 | [0] | address |  |
 
-### afterPoolInitialize
-
-```solidity
-function afterPoolInitialize(address pool) external
-```
-**Selector**: `0x12e3b4d1`
-
-Hook for calling after pool deployment
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| pool | address | the address of Algebra Integral pool |
-
