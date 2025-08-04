@@ -25,7 +25,7 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
 
   /// @inheritdoc IAlgebraFactory
   /// @dev keccak256 of AlgebraPool init bytecode. Used to compute pool address deterministically
-  bytes32 public constant override POOL_INIT_CODE_HASH = 0xf45e886a0794c1d80aeae5ab5befecd4f0f2b77c0cf627f7c46ec92dc1fa00e4;
+  bytes32 public constant override POOL_INIT_CODE_HASH = 0xe4894f29e2491e531db85584561de8b8869774d41313c860cf4089d80a51d8a4;
 
   /// @inheritdoc IAlgebraFactory
   address public override poolDeployer;
