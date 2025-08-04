@@ -5,7 +5,6 @@ import '@cryptoalgebra/integral-core/contracts/libraries/SafeCast.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraSwapCallback.sol';
-import '@cryptoalgebra/integral-core/contracts/base/BlastGovernorSetup.sol';
 
 import '../interfaces/IQuoterV2.sol';
 import '../base/PeripheryImmutableState.sol';
@@ -20,7 +19,7 @@ import '../libraries/PoolTicksCounter.sol';
 /// the swap and check the amounts in the callback.
 /// Credit to Uniswap Labs under GPL-2.0-or-later license:
 /// https://github.com/Uniswap/v3-periphery
-contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState, BlastGovernorSetup {
+contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState {
     using Path for bytes;
     using SafeCast for uint256;
     using PoolTicksCounter for IAlgebraPool;
@@ -29,12 +28,10 @@ contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState, B
     uint256 private amountOutCached;
 
     constructor(
-        address _blastGovernor,
         address _factory,
         address _WNativeToken,
         address _poolDeployer
     ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {
-        __BlastGovernorSetup_init(_blastGovernor);
     }
 
     function getPool(address tokenA, address tokenB) private view returns (IAlgebraPool) {

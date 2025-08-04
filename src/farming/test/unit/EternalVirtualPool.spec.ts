@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { expect, blockTimestamp, snapshotGasCost, mockBlastPart } from '../shared';
+import { expect, blockTimestamp, snapshotGasCost } from '../shared';
 
 import { createTimeMachine } from '../shared/time';
 
@@ -26,8 +26,6 @@ describe('unit/EternalVirtualPool', () => {
   });
 
   const virtualPoolFixture: () => Promise<{ poolMock: PoolMock; virtualPool: TestVirtualPool; initTimestamp: number }> = async () => {
-    await mockBlastPart();
-
     const _blockTimestamp = await blockTimestamp();
     const _initTimestamp = _blockTimestamp + 1000000;
 
@@ -38,7 +36,7 @@ describe('unit/EternalVirtualPool', () => {
 
     let signer = await ethers.getSigners();
     const virtualPoolFactory = await ethers.getContractFactory('TestVirtualPool');
-    const _virtualPool = (await virtualPoolFactory.deploy(signer[0].address, pseudoFarming.address, _poolMock)) as any as TestVirtualPool;
+    const _virtualPool = (await virtualPoolFactory.deploy(pseudoFarming.address, _poolMock)) as any as TestVirtualPool;
 
     return {
       poolMock: _poolMock,

@@ -25,9 +25,4 @@ contract FaultyVaultFactoryStub is IAlgebraVaultFactory {
   function createVaultForPool(address) external view override returns (address) {
     return defaultAlgebraCommunityVault;
   }
-
-  /// @inheritdoc IAlgebraVaultFactory
-  function afterPoolInitialize(address pool) external override {
-    emit AfterPoolInitialize__Test(msg.sender, pool);
-  }
 }

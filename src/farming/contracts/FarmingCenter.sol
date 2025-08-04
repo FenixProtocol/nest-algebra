@@ -3,7 +3,6 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IERC20Minimal.sol';
-import '@cryptoalgebra/integral-core/contracts/base/BlastGovernorSetup.sol';
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IPositionFollower.sol';
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
 import '@cryptoalgebra/integral-periphery/contracts/base/Multicall.sol';
@@ -15,7 +14,7 @@ import './libraries/IncentiveId.sol';
 
 /// @title Algebra Integral 1.0 main farming contract
 /// @dev Manages farmings and performs entry, exit and other actions.
-contract FarmingCenter is IFarmingCenter, IPositionFollower, Multicall, BlastGovernorSetup {
+contract FarmingCenter is IFarmingCenter, IPositionFollower, Multicall {
   /// @inheritdoc IFarmingCenter
   IAlgebraEternalFarming public immutable override eternalFarming;
   /// @inheritdoc IFarmingCenter
@@ -32,9 +31,7 @@ contract FarmingCenter is IFarmingCenter, IPositionFollower, Multicall, BlastGov
   /// @inheritdoc IFarmingCenter
   mapping(bytes32 incentiveId => IncentiveKey incentiveKey) public override incentiveKeys;
 
-  constructor(address _blastGovernor, IAlgebraEternalFarming _eternalFarming, INonfungiblePositionManager _nonfungiblePositionManager) {
-    __BlastGovernorSetup_init(_blastGovernor);
-
+  constructor(IAlgebraEternalFarming _eternalFarming, INonfungiblePositionManager _nonfungiblePositionManager) {
     eternalFarming = _eternalFarming;
     nonfungiblePositionManager = _nonfungiblePositionManager;
     algebraPoolDeployer = _nonfungiblePositionManager.poolDeployer();

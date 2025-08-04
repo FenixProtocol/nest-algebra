@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/FenixProtocol/fenix-algebra"
+    "url": "https://github.com/FenixProtocol/nest-algebra"
   },
   "dependencies": {
     "@cryptoalgebra/integral-core": "file:../core",

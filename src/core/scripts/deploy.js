@@ -29,10 +29,10 @@ async function main() {
   await proxy.waitForDeployment();
 
   const factory = AlgebraFactory.attach(proxy.target);
-  await factory.initialize(Config.BLAST_GOVERNOR, Config.BLAST_POINTS, Config.BLAST_POINTS_OPERATOR, poolDeployerAddress); // +2
+  await factory.initialize(poolDeployerAddress); // +2
 
   const PoolDeployerFactory = await hre.ethers.getContractFactory('AlgebraPoolDeployer');
-  const poolDeployer = await PoolDeployerFactory.deploy(Config.BLAST_GOVERNOR, factory.target);
+  const poolDeployer = await PoolDeployerFactory.deploy(factory.target);
 
   await poolDeployer.waitForDeployment();
 
@@ -43,14 +43,14 @@ async function main() {
   console.log('ProxyAdmin deployed to:', proxyAdmin.target);
 
   const vaultFactory = await hre.ethers.getContractFactory('AlgebraCommunityVault');
-  const vault = await vaultFactory.deploy(Config.BLAST_GOVERNOR, factory, deployer.address);
+  const vault = await vaultFactory.deploy(factory, deployer.address);
 
   await vault.waitForDeployment();
 
   console.log('AlgebraCommunityVault deployed to:', vault.target);
 
   const vaultFactoryStubFactory = await hre.ethers.getContractFactory('AlgebraVaultFactoryStub');
-  const vaultFactoryStub = await vaultFactoryStubFactory.deploy(Config.BLAST_GOVERNOR, vault);
+  const vaultFactoryStub = await vaultFactoryStubFactory.deploy(vault);
 
   await vaultFactoryStub.waitForDeployment();
 

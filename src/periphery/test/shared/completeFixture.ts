@@ -86,7 +86,6 @@ const completeFixture: () => Promise<{
   const nftDescriptorProxied = positionDescriptorFactory.attach(proxy) as any as NonfungibleTokenPositionDescriptor;
   const positionManagerFactory = await ethers.getContractFactory('MockTimeNonfungiblePositionManager');
   const nft = (await positionManagerFactory.deploy(
-    factoryOwner,
     factory,
     wnative,
     nftDescriptorProxied,

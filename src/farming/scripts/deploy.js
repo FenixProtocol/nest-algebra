@@ -15,11 +15,7 @@ async function main() {
   const deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
 
   const AlgebraEternalFarmingFactory = await hre.ethers.getContractFactory('AlgebraEternalFarming');
-  const AlgebraEternalFarming = await AlgebraEternalFarmingFactory.deploy(
-    Config.BLAST_GOVERNOR,
-    deploysData.poolDeployer,
-    deploysData.nonfungiblePositionManager
-  );
+  const AlgebraEternalFarming = await AlgebraEternalFarmingFactory.deploy(deploysData.poolDeployer, deploysData.nonfungiblePositionManager);
 
   deploysData.eternal = AlgebraEternalFarming.target;
 
@@ -27,11 +23,7 @@ async function main() {
   console.log('AlgebraEternalFarming deployed to:', AlgebraEternalFarming.target);
 
   const FarmingCenterFactory = await hre.ethers.getContractFactory('FarmingCenter');
-  const FarmingCenter = await FarmingCenterFactory.deploy(
-    Config.BLAST_GOVERNOR,
-    AlgebraEternalFarming.target,
-    deploysData.nonfungiblePositionManager
-  );
+  const FarmingCenter = await FarmingCenterFactory.deploy(AlgebraEternalFarming.target, deploysData.nonfungiblePositionManager);
 
   deploysData.fc = FarmingCenter.target;
 

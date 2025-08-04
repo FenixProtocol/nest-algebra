@@ -2,8 +2,6 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/LowGasSafeMath.sol';
-import '@cryptoalgebra/integral-core/contracts/base/BlastGovernorSetup.sol';
-
 import './interfaces/external/IUniswapV2Pair.sol';
 import './interfaces/external/IWNativeToken.sol';
 import './interfaces/INonfungiblePositionManager.sol';
@@ -24,21 +22,18 @@ contract V3Migrator is
     PeripheryImmutableState,
     PoolInitializer,
     Multicall,
-    SelfPermit,
-    BlastGovernorSetup
+    SelfPermit
 {
     using LowGasSafeMath for uint256;
 
     address public immutable nonfungiblePositionManager;
 
     constructor(
-        address _blastGovernor,
         address _factory,
         address _WNativeToken,
         address _nonfungiblePositionManager,
         address _poolDeployer
     ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {
-        __BlastGovernorSetup_init(_blastGovernor);
         nonfungiblePositionManager = _nonfungiblePositionManager;
     }
 

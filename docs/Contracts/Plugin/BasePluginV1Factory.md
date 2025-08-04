@@ -7,7 +7,7 @@ Algebra Integral 1.0 default plugin factory
 
 This contract creates Algebra default plugins for Algebra liquidity pools
 
-**Inherits:** [IBasePluginV1Factory](interfaces/IBasePluginV1Factory.md) [BlastGovernorSetup](../Core/base/BlastGovernorSetup.md)
+**Inherits:** [IBasePluginV1Factory](interfaces/IBasePluginV1Factory.md)
 ## Modifiers
 ### onlyAdministrator
 
@@ -58,15 +58,6 @@ address farmingAddress
 Returns current farming address
 
 
-### defaultBlastGovernor
-```solidity
-address defaultBlastGovernor
-```
-**Selector**: `0xfb6cd276`
-
-Returns current default blast governor address
-
-
 ### implementation
 ```solidity
 address implementation
@@ -93,14 +84,13 @@ Returns address of plugin created for given AlgebraPool
 ### constructor
 
 ```solidity
-constructor(address _blastGovernor, address _algebraFactory, address _basePluginV1Implementation) public
+constructor(address _algebraFactory, address _basePluginV1Implementation) public
 ```
 
 
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _blastGovernor | address |  |
 | _algebraFactory | address |  |
 | _basePluginV1Implementation | address |  |
 
@@ -144,21 +134,6 @@ Create plugin for already existing pool
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | address | The address of created plugin |
-
-### setDefaultBlastGovernor
-
-```solidity
-function setDefaultBlastGovernor(address defaultBlastGovernor_) external
-```
-**Selector**: `0x998709e0`
-
-
-
-*Developer note: updates default blast governor address on the factory*
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| defaultBlastGovernor_ | address | The new defautl blast governor address |
 
 ### setDefaultFeeConfiguration
 

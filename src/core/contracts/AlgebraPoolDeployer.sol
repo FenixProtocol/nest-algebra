@@ -5,23 +5,18 @@ pragma abicoder v1;
 import './interfaces/IAlgebraPoolDeployer.sol';
 
 import './AlgebraPool.sol';
-import './base/BlastGovernorSetup.sol';
 
 /// @title Algebra pool deployer
 /// @notice Is used by AlgebraFactory to deploy pools
 /// @dev Version: Algebra Integral 1.0
-contract AlgebraPoolDeployer is IAlgebraPoolDeployer, BlastGovernorSetup {
-  address private tempBlastGovernor;
-  address private tempBlastPoints;
-  address private tempBlastPointsOperator;
+contract AlgebraPoolDeployer is IAlgebraPoolDeployer {
   address private tempPlugin;
   address private tempToken0;
   address private tempToken1;
 
   address private immutable factory;
 
-  constructor(address _blastGovernor, address _factory) {
-    __BlastGovernorSetup_init(_blastGovernor);
+  constructor(address _factory) {
 
     require(_factory != address(0));
     factory = _factory;
@@ -33,19 +28,13 @@ contract AlgebraPoolDeployer is IAlgebraPoolDeployer, BlastGovernorSetup {
     view
     override
     returns (
-      address _blastGovernor,
-      address _blastPoints,
-      address _blastPointsOperator,
       address _plugin,
       address _factory,
       address _token0,
       address _token1
     )
   {
-    (_blastGovernor, _blastPoints, _blastPointsOperator, _plugin, _token0, _token1) = (
-      tempBlastGovernor,
-      tempBlastPoints,
-      tempBlastPointsOperator,
+    (_plugin, _token0, _token1) = (
       tempPlugin,
       tempToken0,
       tempToken1
@@ -55,19 +44,13 @@ contract AlgebraPoolDeployer is IAlgebraPoolDeployer, BlastGovernorSetup {
 
   /// @inheritdoc IAlgebraPoolDeployer
   function deploy(
-    address blastGovernor,
-    address blastPoints,
-    address blastPointsOperator,
     address plugin,
     address token0,
     address token1
   ) external override returns (address pool) {
     require(msg.sender == factory);
 
-    (tempBlastGovernor, tempBlastPoints, tempBlastPointsOperator, tempPlugin, tempToken0, tempToken1) = (
-      blastGovernor,
-      blastPoints,
-      blastPointsOperator,
+    (tempPlugin, tempToken0, tempToken1) = (
       plugin,
       token0,
       token1
@@ -75,10 +58,7 @@ contract AlgebraPoolDeployer is IAlgebraPoolDeployer, BlastGovernorSetup {
 
     pool = address(new AlgebraPool{salt: keccak256(abi.encode(token0, token1))}());
 
-    (tempBlastGovernor, tempBlastPoints, tempBlastPointsOperator, tempPlugin, tempToken0, tempToken1) = (
-      address(0),
-      address(0),
-      address(0),
+    (tempPlugin, tempToken0, tempToken1) = (
       address(0),
       address(0),
       address(0)
