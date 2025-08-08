@@ -80,11 +80,15 @@ export default {
       url: `https://rpc-test.arthera.net`,
       chainId: 10243,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
-    }
+    },
+    hyperEvmTestnet: {
+      url: `https://rpc.hyperliquid-testnet.xyz/evm`,
+      chainId: 998,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
   },
   etherscan: {
-    apiKey: {
-    },
+    apiKey: {},
     customChains: [
       {
         network: 'mantleTestnet',

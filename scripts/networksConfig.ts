@@ -1,7 +1,13 @@
 interface NetworkConfig {
   FILE: string;
+  WETH: string;
 }
-const NetworksConfig: Record<number, NetworkConfig> = {};
+const NetworksConfig: Record<number, NetworkConfig> = {
+  998: {
+    FILE: 'hyper_evm_testnet_deploy.json',
+    WETH: '0xADcb2f358Eae6492F61A5F87eb8893d09391d160',
+  },
+};
 
 export function getConfig(chainId: number): NetworkConfig {
   const config = NetworksConfig[chainId];
