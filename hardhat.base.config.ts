@@ -1,7 +1,16 @@
 const path = require('path');
 const config = require('dotenv').config({ path: path.resolve(__dirname, '.env') });
-const { ETHERSCAN_API_KEY, BSCSCAN_API_KEY, POLYGONSCAN_API_KEY, MNEMONIC, DEPLOY_GAS_LIMIT_MAX, DEPLOY_GAS_PRICE, INFURA_ID_PROJECT, API_KEY } =
-  config.parsed || {};
+const {
+  ETHERSCAN_API_KEY,
+  BSCSCAN_API_KEY,
+  POLYGONSCAN_API_KEY,
+  MNEMONIC,
+  DEPLOY_GAS_LIMIT_MAX,
+  DEPLOY_GAS_PRICE,
+  INFURA_ID_PROJECT,
+  API_KEY,
+  BASE_SEPOLIA_RPC,
+} = config.parsed || {};
 
 export default {
   networks: {
@@ -86,10 +95,24 @@ export default {
       chainId: 998,
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    baseSepolia: {
+      url: `${BASE_SEPOLIA_RPC || 'https://sepolia.base.org'}`,
+      chainId: 84532,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+      gasPrice: 0.01e9,
+    },
   },
   etherscan: {
-    apiKey: {},
+    apiKey: `${ETHERSCAN_API_KEY}`,
     customChains: [
+      {
+        network: 'baseSepolia',
+        chainId: 84532,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api?chainid=84532',
+          browserURL: 'https://sepolia.basescan.org',
+        },
+      },
       {
         network: 'mantleTestnet',
         chainId: 5001,

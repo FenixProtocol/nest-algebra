@@ -7,6 +7,10 @@ const NetworksConfig: Record<number, NetworkConfig> = {
     FILE: 'hyper_evm_testnet_deploy.json',
     WETH: '0xADcb2f358Eae6492F61A5F87eb8893d09391d160',
   },
+  84532: {
+    FILE: 'sepolia_base.json',
+    WETH: '0x4200000000000000000000000000000000000006',
+  },
 };
 
 export function getConfig(chainId: number): NetworkConfig {
