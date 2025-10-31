@@ -2,8 +2,6 @@ const hre = require('hardhat');
 const fs = require('fs');
 const path = require('path');
 
-const FEES_VAULT = '0x705C76e29977Ed52cd93d390A7BBcC61189724C0';
-
 const { getConfig } = require('../../../scripts/networksConfig');
 async function main() {
   const { chainId } = await hre.ethers.provider.getNetwork();
@@ -13,12 +11,8 @@ async function main() {
   const deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
 
   const AlgebraFactory = await hre.ethers.getContractAt('AlgebraFactoryUpgradeable', deploysData.factory);
-  await AlgebraFactory.setVaultFactory(FEES_VAULT);
-  console.log('Updated FeesVault in Factory to', FEES_VAULT);
-
-  await AlgebraFactory.setDefaultCommunityFee(1000); // 100%
+  await AlgebraFactory.setIsPublicPoolCreationMode(true);
 }
-
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 main()

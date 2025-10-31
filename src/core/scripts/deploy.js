@@ -29,7 +29,8 @@ async function main() {
   await proxy.waitForDeployment();
 
   const factory = AlgebraFactory.attach(proxy.target);
-  await factory.initialize(poolDeployerAddress); // +2
+  let tx = await factory.initialize(poolDeployerAddress); // +2
+  await tx.wait();
 
   const PoolDeployerFactory = await hre.ethers.getContractFactory('AlgebraPoolDeployer');
   const poolDeployer = await PoolDeployerFactory.deploy(factory.target);

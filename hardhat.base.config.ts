@@ -101,10 +101,24 @@ export default {
       accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
       gasPrice: 0.01e9,
     },
+    hyperEvm: {
+      url: `https://rpc.hyperliquid.xyz/evm`,
+      chainId: 999,
+      gasPrice: 0.13e9,
+      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
   },
   etherscan: {
     apiKey: `${ETHERSCAN_API_KEY}`,
     customChains: [
+      {
+        network: 'hyperEvm',
+        chainId: 999,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api?chainid=999',
+          browserURL: 'https://hyperevmscan.io/',
+        },
+      },
       {
         network: 'baseSepolia',
         chainId: 84532,
