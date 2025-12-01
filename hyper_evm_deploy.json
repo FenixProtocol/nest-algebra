@@ -18,5 +18,7 @@
   "nonfungiblePositionManager": "0xEAF58788a405F3253814b4559391a22bE8616250",
   "AlgebraInterfaceMulticall": "0x4b2ACD111648718D9aaf028b744DbbFbF96bc545",
   "eternal": "0x92B99DA7DeD04684FedE0e68484DC17b930c3066",
-  "fc": "0x98961D85E004b246fcd9A07ac4d6D8169E30b0f8"
+  "fc": "0x98961D85E004b246fcd9A07ac4d6D8169E30b0f8",
+  "AlgebraDefaultPluginFactory#AlgebraDefaultPluginFactory": "0xe165ee23a9de18f7287DDE6e1C57737a6b1634Ad",
+  "AlgebraDefaultPluginFactory#SecurityRegistry": "0x47f2d9058fe32da17a0f253F70266D9Dcd585879"
 }
