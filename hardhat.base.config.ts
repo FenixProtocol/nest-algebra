@@ -10,6 +10,8 @@ const {
   INFURA_ID_PROJECT,
   API_KEY,
   BASE_SEPOLIA_RPC,
+  HYPE_RPC,
+  DEV_KEY,
 } = config.parsed || {};
 
 export default {
@@ -102,10 +104,10 @@ export default {
       gasPrice: 0.01e9,
     },
     hyperEvm: {
-      url: `https://rpc.hyperliquid.xyz/evm`,
+      url: `${HYPE_RPC}` || `https://rpc.hyperliquid.xyz/evm`,
       chainId: 999,
       gasPrice: 0.13e9,
-      accounts: [`0x${MNEMONIC || '1000000000000000000000000000000000000000000000000000000000000000'}`],
+      accounts: [`${DEV_KEY}`],
     },
   },
   etherscan: {
