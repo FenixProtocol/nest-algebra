@@ -76,7 +76,7 @@ async function main() {
   );
   const NonfungibleTokenPositionDescriptor = await NonfungibleTokenPositionDescriptorFactory.deploy(
     WNativeTokenAddress,
-    'WTLS',
+    'WHYPE',
     []
   );
 

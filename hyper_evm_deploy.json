@@ -13,7 +13,7 @@
   "quoterV2": "0xBea20609A4772311c5b81F814Cd4f9ECaEF5DFAd",
   "swapRouter": "0xaA26B8e5Cadd04430c32787eCC3AA325e99681e9",
   "NFTDescriptor": "0xA842feb9F816891B4a377B6f8435462739091836",
-  "NonfungibleTokenPositionDescriptor": "0x0f36C26844632A78605d43b2e55EcB1dd19e71C8",
+  "NonfungibleTokenPositionDescriptor": "0x6F43C4eEcC5FA06be4639a0894343e7e7F17965C",
   "proxy": "0x18ceCc5C2DC431045F707bb388f11957CDf358Db",
   "nonfungiblePositionManager": "0xEAF58788a405F3253814b4559391a22bE8616250",
   "AlgebraInterfaceMulticall": "0x4b2ACD111648718D9aaf028b744DbbFbF96bc545",
