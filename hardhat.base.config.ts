@@ -107,7 +107,7 @@ export default {
       url: `${HYPE_RPC}` || `https://rpc.hyperliquid.xyz/evm`,
       chainId: 999,
       gasPrice: 0.13e9,
-      accounts: [`${DEV_KEY}`],
+      accounts: [`${DEV_KEY || '0x0000000000000000000000000000000000000000000000000000000000000000'}`],
     },
   },
   etherscan: {
