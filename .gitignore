@@ -23,3 +23,7 @@ bytecode
 **/coverage
 **/crytic-export
 **/coverage.json
+
+.codex
+.agents
+AGENTS.md

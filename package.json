@@ -39,6 +39,8 @@
   "scripts": {
     "postinstall": "husky install",
     "lint": "prettier .",
+    "compile": "cd src/core && hardhat compile && cd ../periphery && hardhat compile && cd ../plugin && hardhat compile && cd ../farming && hardhat compile",
+    "test": "npm --prefix src/core run test && npm --prefix src/periphery run test && npm --prefix src/plugin run test && npm --prefix src/farming run test",
     "bootstrap": "npm install && lerna bootstrap",
     "ci-install": "npm ci && lerna bootstrap",
     "deploy": "node scripts/deployAll.js",
