@@ -91,10 +91,11 @@ contract NonfungiblePositionManager is
         address _factory,
         address _WNativeToken,
         address _tokenDescriptor_,
-        address _poolDeployer
+        address _poolDeployer,
+        address _customPoolDeployer
     )
         ERC721Permit('Nest Positions NFT-V2', 'NEST-POS', '2')
-        PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer)
+        PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer, _customPoolDeployer)
     {
         _tokenDescriptor = _tokenDescriptor_;
     }
@@ -262,7 +263,7 @@ contract NonfungiblePositionManager is
 
         uint80 poolId = _cachePoolKey(
             address(pool),
-            PoolAddress.PoolKey({token0: params.token0, token1: params.token1}),
+            PoolAddress.getPoolKey(params.deployer, params.token0, params.token1),
             params.deployer
         );
 
@@ -300,10 +301,7 @@ contract NonfungiblePositionManager is
     function _getPoolById(uint80 poolId) private view returns (address) {
         PoolAddress.PoolKey storage poolKey = _poolIdToPoolKey[poolId];
         address deployer = _poolIdToCustomDeployer[poolId];
-        return
-            deployer == address(0)
-                ? PoolAddress.computeAddress(poolDeployer, poolKey)
-                : IAlgebraFactory(factory).customPoolByPair(deployer, poolKey.token0, poolKey.token1);
+        return PoolAddress.computeAddress(poolDeployer, customPoolDeployer, PoolAddress.getPoolKey(deployer, poolKey.token0, poolKey.token1));
     }
 
     function _updateUncollectedFees(

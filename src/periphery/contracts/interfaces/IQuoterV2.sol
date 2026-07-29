@@ -33,29 +33,7 @@ interface IQuoterV2 {
             uint16[] memory feeList
         );
 
-    /// @notice Returns the amount out received for an exact input custom path encoded as token,deployer,token...
-    function quoteExactInputCustom(
-        bytes memory path,
-        uint256 amountInRequired
-    )
-        external
-        returns (
-            uint256 amountOut,
-            uint256 amountIn,
-            uint160[] memory sqrtPriceX96AfterList,
-            uint32[] memory initializedTicksCrossedList,
-            uint256 gasEstimate,
-            uint16[] memory feeList
-        );
-
     struct QuoteExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint256 amountIn;
-        uint160 limitSqrtPrice;
-    }
-
-    struct QuoteExactInputSingleCustomParams {
         address tokenIn;
         address tokenOut;
         address deployer;
@@ -67,6 +45,7 @@ interface IQuoterV2 {
     /// @param params The params for the quote, encoded as `QuoteExactInputSingleParams`
     /// tokenIn The token being swapped in
     /// tokenOut The token being swapped out
+    /// deployer The custom pool deployer, or address(0) for classic pools
     /// amountIn The desired input amount
     /// limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap
     /// @return amountOut The amount of `tokenOut` that would be received
@@ -77,20 +56,6 @@ interface IQuoterV2 {
     /// @return fee The fee value used for swap in the pool
     function quoteExactInputSingle(
         QuoteExactInputSingleParams memory params
-    )
-        external
-        returns (
-            uint256 amountOut,
-            uint256 amountIn,
-            uint160 sqrtPriceX96After,
-            uint32 initializedTicksCrossed,
-            uint256 gasEstimate,
-            uint16 fee
-        );
-
-    /// @notice Returns the amount out received for a given exact input custom pool swap
-    function quoteExactInputSingleCustom(
-        QuoteExactInputSingleCustomParams memory params
     )
         external
         returns (
@@ -125,29 +90,7 @@ interface IQuoterV2 {
             uint16[] memory feeList
         );
 
-    /// @notice Returns the amount in required for an exact output custom path encoded as token,deployer,token... in reverse order
-    function quoteExactOutputCustom(
-        bytes memory path,
-        uint256 amountOutRequired
-    )
-        external
-        returns (
-            uint256 amountOut,
-            uint256 amountIn,
-            uint160[] memory sqrtPriceX96AfterList,
-            uint32[] memory initializedTicksCrossedList,
-            uint256 gasEstimate,
-            uint16[] memory feeList
-        );
-
     struct QuoteExactOutputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint256 amount;
-        uint160 limitSqrtPrice;
-    }
-
-    struct QuoteExactOutputSingleCustomParams {
         address tokenIn;
         address tokenOut;
         address deployer;
@@ -159,6 +102,7 @@ interface IQuoterV2 {
     /// @param params The params for the quote, encoded as `QuoteExactOutputSingleParams`
     /// tokenIn The token being swapped in
     /// tokenOut The token being swapped out
+    /// deployer The custom pool deployer, or address(0) for classic pools
     /// amountOut The desired output amount
     /// limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap
     /// @return amountOut The amount of the last token that would be received
@@ -180,17 +124,4 @@ interface IQuoterV2 {
             uint16 fee
         );
 
-    /// @notice Returns the amount in required for a given exact output custom pool swap
-    function quoteExactOutputSingleCustom(
-        QuoteExactOutputSingleCustomParams memory params
-    )
-        external
-        returns (
-            uint256 amountOut,
-            uint256 amountIn,
-            uint160 sqrtPriceX96After,
-            uint32 initializedTicksCrossed,
-            uint256 gasEstimate,
-            uint16 fee
-        );
 }

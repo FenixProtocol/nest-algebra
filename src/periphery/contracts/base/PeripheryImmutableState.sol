@@ -13,11 +13,14 @@ abstract contract PeripheryImmutableState is IPeripheryImmutableState {
     /// @inheritdoc IPeripheryImmutableState
     address public immutable override poolDeployer;
     /// @inheritdoc IPeripheryImmutableState
+    address public immutable override customPoolDeployer;
+    /// @inheritdoc IPeripheryImmutableState
     address public immutable override WNativeToken;
 
-    constructor(address _factory, address _WNativeToken, address _poolDeployer) {
+    constructor(address _factory, address _WNativeToken, address _poolDeployer, address _customPoolDeployer) {
         factory = _factory;
         poolDeployer = _poolDeployer;
+        customPoolDeployer = _customPoolDeployer;
         WNativeToken = _WNativeToken;
     }
 }

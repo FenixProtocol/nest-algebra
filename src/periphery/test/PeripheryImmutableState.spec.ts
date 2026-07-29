@@ -17,7 +17,8 @@ describe('PeripheryImmutableState', () => {
     const state = (await stateFactory.deploy(
       factory,
       wnative,
-      await factory.poolDeployer()
+      await factory.poolDeployer(),
+      await factory.customPoolDeployer()
     )) as any as PeripheryImmutableStateTest;
 
     return {
@@ -48,6 +49,12 @@ describe('PeripheryImmutableState', () => {
   describe('#factory', () => {
     it('points to v3 core factory', async () => {
       expect(await state.factory()).to.eq(await factory.getAddress());
+    });
+  });
+
+  describe('#customPoolDeployer', () => {
+    it('points to custom pool deployer', async () => {
+      expect(await state.customPoolDeployer()).to.eq(await factory.customPoolDeployer());
     });
   });
 });

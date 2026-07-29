@@ -1,5 +1,10 @@
 import { Wallet } from 'ethers';
-import { MockTimeNonfungiblePositionManager } from '../../typechain';
+import { ethers } from 'hardhat';
+import {
+  abi as MOCK_PLUGIN_FACTORY_ABI,
+  bytecode as MOCK_PLUGIN_FACTORY_BYTECODE,
+} from '@cryptoalgebra/integral-core/artifacts/contracts/test/MockDefaultPluginFactory.sol/MockDefaultPluginFactory.json';
+import { IAlgebraFactory, MockTimeNonfungiblePositionManager } from '../../typechain';
 import { FeeAmount, TICK_SPACINGS } from './constants';
 import { encodePriceSqrt } from './encodePriceSqrt';
 import { getMaxTick, getMinTick } from './ticks';
@@ -143,4 +148,42 @@ export async function createPoolWithZeroTickInitialized(
   };
 
   return nft.mint(liquidityParams3);
+}
+
+export async function createCustomPool(
+  nft: MockTimeNonfungiblePositionManager,
+  factory: IAlgebraFactory,
+  wallet: Wallet,
+  tokenAddressA: string,
+  tokenAddressB: string
+): Promise<string> {
+  if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
+    [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA];
+
+  const entryPoint = await (await ethers.getContractFactory('AlgebraCustomPoolEntryPoint')).deploy(factory);
+  const pluginFactory = await (
+    await ethers.getContractFactory(MOCK_PLUGIN_FACTORY_ABI, MOCK_PLUGIN_FACTORY_BYTECODE)
+  ).deploy();
+  await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), await entryPoint.getAddress());
+
+  const customDeployer = await pluginFactory.getAddress();
+  await pluginFactory.createCustomPool(await entryPoint.getAddress(), wallet.address, tokenAddressA, tokenAddressB, '0x');
+  await nft.initializeCustomPoolIfNecessary(customDeployer, tokenAddressA, tokenAddressB, encodePriceSqrt(1, 1));
+
+  const liquidityParams = {
+    token0: tokenAddressA,
+    token1: tokenAddressB,
+    deployer: customDeployer,
+    tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+    tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+    recipient: wallet.address,
+    amount0Desired: 1000000,
+    amount1Desired: 1000000,
+    amount0Min: 0,
+    amount1Min: 0,
+    deadline: 1,
+  };
+
+  await nft.mintCustom(liquidityParams);
+  return customDeployer;
 }

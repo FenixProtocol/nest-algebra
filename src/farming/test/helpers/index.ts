@@ -1,4 +1,4 @@
-import { Wallet, MaxUint256, Interface } from 'ethers';
+import { Wallet, MaxUint256, Interface, ZeroAddress } from 'ethers';
 import { blockTimestamp, BNe18, FeeAmount, getCurrentTick, maxGas, encodePath, arrayWrap, getMinTick, getMaxTick } from '../shared/index';
 import _, { conforms } from 'lodash';
 import { TestERC20, INonfungiblePositionManager, AlgebraEternalFarming, IAlgebraPool, TestIncentiveId, FarmingCenter } from '../../typechain';
@@ -410,6 +410,7 @@ export class HelperCommands {
         deadline: MaxUint256,
         tokenIn: zto ? tok0Address : tok1Address,
         tokenOut: zto ? tok1Address : tok0Address,
+        deployer: ZeroAddress,
         amountIn: 2n ** 128n - 1n,
         amountOutMinimum: 0,
         limitSqrtPrice: priceAtTarget,

@@ -73,7 +73,7 @@ contract NonfungibleTokenPositionDescriptor is INonfungibleTokenPositionDescript
         IAlgebraPool pool = IAlgebraPool(
             PoolAddress.computeAddress(
                 positionManager.poolDeployer(),
-                PoolAddress.PoolKey({token0: token0, token1: token1})
+                PoolAddress.getPoolKey(token0, token1)
             )
         );
 

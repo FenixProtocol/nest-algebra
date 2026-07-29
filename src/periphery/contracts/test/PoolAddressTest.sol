@@ -15,7 +15,7 @@ contract PoolAddressTest {
         uint24 fee
     ) external pure returns (address) {
         fee;
-        return PoolAddress.computeAddress(factory, PoolAddress.PoolKey({token0: token0, token1: token1}));
+        return PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(token0, token1));
     }
 
     function getGasCostOfComputeAddress(
@@ -26,7 +26,11 @@ contract PoolAddressTest {
     ) external view returns (uint256) {
         fee;
         uint256 gasBefore = gasleft();
-        PoolAddress.computeAddress(factory, PoolAddress.PoolKey({token0: token0, token1: token1}));
+        PoolAddress.computeAddress(factory, PoolAddress.getPoolKey(token0, token1));
         return gasBefore - gasleft();
+    }
+
+    function computeAddressRaw(address factory, address token0, address token1) external pure returns (address) {
+        return PoolAddress.computeAddress(factory, PoolAddress.PoolKey({deployer: address(0), token0: token0, token1: token1}));
     }
 }

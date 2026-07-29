@@ -1,13 +1,17 @@
 import { MaxUint256, Contract, ContractTransactionResponse, Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import {
+  abi as MOCK_PLUGIN_FACTORY_ABI,
+  bytecode as MOCK_PLUGIN_FACTORY_BYTECODE,
+} from '@cryptoalgebra/integral-core/artifacts/contracts/test/MockDefaultPluginFactory.sol/MockDefaultPluginFactory.json';
 import { IWNativeToken, MockTimeNonfungiblePositionManager, MockTimeSwapRouter, TestERC20 } from '../typechain';
 import completeFixture from './shared/completeFixture';
 import { FeeAmount, TICK_SPACINGS } from './shared/constants';
 import { encodePriceSqrt } from './shared/encodePriceSqrt';
 import { expandTo18Decimals } from './shared/expandTo18Decimals';
 import { expect } from './shared/expect';
-import { encodePath } from './shared/path';
+import { encodePath, encodeRoutePath } from './shared/path';
 import { getMaxTick, getMinTick } from './shared/ticks';
 import { computePoolAddress } from './shared/computePoolAddress';
 
@@ -58,6 +62,41 @@ describe('SwapRouter', function () {
     };
 
     return _nft.mint(liquidityParams);
+  }
+
+  async function createCustomPool(
+    _nft: MockTimeNonfungiblePositionManager,
+    _wallet: Wallet,
+    tokenAddressA: string,
+    tokenAddressB: string
+  ): Promise<string> {
+    if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
+      [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA];
+
+    const entryPoint = await (await ethers.getContractFactory('AlgebraCustomPoolEntryPoint')).deploy(factory);
+    const pluginFactory = await (await ethers.getContractFactory(MOCK_PLUGIN_FACTORY_ABI, MOCK_PLUGIN_FACTORY_BYTECODE)).deploy();
+    await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), await entryPoint.getAddress());
+
+    const customDeployer = await pluginFactory.getAddress();
+    await pluginFactory.createCustomPool(await entryPoint.getAddress(), _wallet.address, tokenAddressA, tokenAddressB, '0x');
+    await _nft.initializeCustomPoolIfNecessary(customDeployer, tokenAddressA, tokenAddressB, encodePriceSqrt(1, 1));
+
+    const liquidityParams = {
+      token0: tokenAddressA,
+      token1: tokenAddressB,
+      deployer: customDeployer,
+      tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+      tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+      recipient: _wallet.address,
+      amount0Desired: 1000000,
+      amount1Desired: 1000000,
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: 1,
+    };
+
+    await _nft.mintCustom(liquidityParams);
+    return customDeployer;
   }
 
   const swapRouterFixture: () => Promise<{
@@ -153,6 +192,7 @@ describe('SwapRouter', function () {
         router.exactInputSingle({
           tokenIn: tokens[0].address,
           tokenOut: tokens[1].address,
+          deployer: ZeroAddress,
           limitSqrtPrice: 0,
           amountOutMinimum: 0,
           deadline: 1,
@@ -281,6 +321,46 @@ describe('SwapRouter', function () {
           expect(traderAfter.token0).to.be.eq(traderBefore.token0 + 1n);
         });
 
+        it('0 -> 1 classic, 1 -> 2 custom', async () => {
+          const customDeployer = await createCustomPool(nft, wallet, tokens[1].address, tokens[2].address);
+          const traderBefore = await getBalances(trader.address);
+
+          await router.connect(trader).exactInput({
+            path: encodeRoutePath(
+              tokens.map((token) => token.address),
+              [ZeroAddress, customDeployer]
+            ),
+            recipient: trader.address,
+            deadline: 1,
+            amountIn: 5,
+            amountOutMinimum: 1,
+          });
+
+          const traderAfter = await getBalances(trader.address);
+          expect(traderAfter.token0).to.be.eq(traderBefore.token0 - 5n);
+          expect(traderAfter.token2).to.be.eq(traderBefore.token2 + 1n);
+        });
+
+        it('0 -> 1 custom, 1 -> 2 classic', async () => {
+          const customDeployer = await createCustomPool(nft, wallet, tokens[0].address, tokens[1].address);
+          const traderBefore = await getBalances(trader.address);
+
+          await router.connect(trader).exactInput({
+            path: encodeRoutePath(
+              tokens.map((token) => token.address),
+              [customDeployer, ZeroAddress]
+            ),
+            recipient: trader.address,
+            deadline: 1,
+            amountIn: 5,
+            amountOutMinimum: 1,
+          });
+
+          const traderAfter = await getBalances(trader.address);
+          expect(traderAfter.token0).to.be.eq(traderBefore.token0 - 5n);
+          expect(traderAfter.token2).to.be.eq(traderBefore.token2 + 1n);
+        });
+
         it('events', async () => {
           await expect(
             exactInput(
@@ -407,7 +487,8 @@ describe('SwapRouter', function () {
         amountIn: number = 3,
         amountOutMinimum: number = 1,
         limitSqrtPrice?: bigint,
-        setTime: number = 1
+        setTime: number = 1,
+        deployer: string = ZeroAddress
       ): Promise<ContractTransactionResponse> {
         const inputIsWNativeToken = (await wnative.getAddress()) === tokenIn;
         const outputIsWNativeToken = tokenOut === (await wnative.getAddress());
@@ -417,6 +498,7 @@ describe('SwapRouter', function () {
         const params = {
           tokenIn,
           tokenOut,
+          deployer,
           fee: FeeAmount.MEDIUM,
           limitSqrtPrice:
             limitSqrtPrice ?? tokenIn.toLowerCase() < tokenOut.toLowerCase()
@@ -490,6 +572,24 @@ describe('SwapRouter', function () {
         expect(poolAfter.token1).to.be.eq(poolBefore.token1 + 3n);
       });
 
+      it('0 -> 1 custom', async () => {
+        const customDeployer = await createCustomPool(nft, wallet, tokens[0].address, tokens[1].address);
+        const pool = await factory.customPoolByPair(customDeployer, tokens[0].address, tokens[1].address);
+
+        const poolBefore = await getBalances(pool);
+        const traderBefore = await getBalances(trader.address);
+
+        await exactInputSingle(tokens[0].address, tokens[1].address, 3, 1, undefined, 1, customDeployer);
+
+        const poolAfter = await getBalances(pool);
+        const traderAfter = await getBalances(trader.address);
+
+        expect(traderAfter.token0).to.be.eq(traderBefore.token0 - 3n);
+        expect(traderAfter.token1).to.be.eq(traderBefore.token1 + 1n);
+        expect(poolAfter.token0).to.be.eq(poolBefore.token0 + 3n);
+        expect(poolAfter.token1).to.be.eq(poolBefore.token1 - 1n);
+      });
+
       describe('Native input', () => {
         describe('WNativeToken', () => {
           beforeEach(async () => {
@@ -555,7 +655,8 @@ describe('SwapRouter', function () {
         amountIn: number = 300000,
         amountOutMinimum: number = 100000,
         limitSqrtPrice?: bigint,
-        setTime: number = 1
+        setTime: number = 1,
+        deployer: string = ZeroAddress
       ): Promise<ContractTransactionResponse> {
         const inputIsWNativeToken = (await wnative.getAddress()) === tokenIn;
         const outputIsWNativeToken = tokenOut === (await wnative.getAddress());
@@ -565,6 +666,7 @@ describe('SwapRouter', function () {
         const params = {
           tokenIn,
           tokenOut,
+          deployer,
           limitSqrtPrice:
             limitSqrtPrice ?? tokenIn.toLowerCase() < tokenOut.toLowerCase()
               ? BigInt('4295128740')
@@ -791,6 +893,26 @@ describe('SwapRouter', function () {
           expect(traderAfter.token0).to.be.eq(traderBefore.token0 + 1n);
         });
 
+        it('0 -> 1 custom, 1 -> 2 classic', async () => {
+          const customDeployer = await createCustomPool(nft, wallet, tokens[0].address, tokens[1].address);
+          const traderBefore = await getBalances(trader.address);
+
+          await router.connect(trader).exactOutput({
+            path: encodeRoutePath(
+              tokens.map((token) => token.address).reverse(),
+              [ZeroAddress, customDeployer]
+            ),
+            recipient: trader.address,
+            deadline: 1,
+            amountOut: 1,
+            amountInMaximum: 5,
+          });
+
+          const traderAfter = await getBalances(trader.address);
+          expect(traderAfter.token0).to.be.eq(traderBefore.token0 - 5n);
+          expect(traderAfter.token2).to.be.eq(traderBefore.token2 + 1n);
+        });
+
         it('events', async () => {
           await expect(
             exactOutput(
@@ -911,7 +1033,8 @@ describe('SwapRouter', function () {
         amountOut: number = 1,
         amountInMaximum: number = 3,
         limitSqrtPrice?: bigint,
-        setTime: number = 1
+        setTime: number = 1,
+        deployer: string = ZeroAddress
       ): Promise<ContractTransactionResponse> {
         const inputIsWNativeToken = tokenIn === (await wnative.getAddress());
         const outputIsWNativeToken = tokenOut === (await wnative.getAddress());
@@ -921,6 +1044,7 @@ describe('SwapRouter', function () {
         const params = {
           tokenIn,
           tokenOut,
+          deployer,
           fee: FeeAmount.MEDIUM,
           recipient: outputIsWNativeToken ? ZeroAddress : trader.address,
           deadline: 1,
@@ -991,6 +1115,24 @@ describe('SwapRouter', function () {
         expect(traderAfter.token1).to.be.eq(traderBefore.token1 - 3n);
         expect(poolAfter.token0).to.be.eq(poolBefore.token0 - 1n);
         expect(poolAfter.token1).to.be.eq(poolBefore.token1 + 3n);
+      });
+
+      it('0 -> 1 custom', async () => {
+        const customDeployer = await createCustomPool(nft, wallet, tokens[0].address, tokens[1].address);
+        const pool = await factory.customPoolByPair(customDeployer, tokens[0].address, tokens[1].address);
+
+        const poolBefore = await getBalances(pool);
+        const traderBefore = await getBalances(trader.address);
+
+        await exactOutputSingle(tokens[0].address, tokens[1].address, 1, 3, undefined, 1, customDeployer);
+
+        const poolAfter = await getBalances(pool);
+        const traderAfter = await getBalances(trader.address);
+
+        expect(traderAfter.token0).to.be.eq(traderBefore.token0 - 3n);
+        expect(traderAfter.token1).to.be.eq(traderBefore.token1 + 1n);
+        expect(poolAfter.token0).to.be.eq(poolBefore.token0 + 3n);
+        expect(poolAfter.token1).to.be.eq(poolBefore.token1 - 1n);
       });
 
       describe('Native input', () => {
