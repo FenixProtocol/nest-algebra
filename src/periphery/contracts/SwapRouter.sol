@@ -4,6 +4,7 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/SafeCast.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 
 import './interfaces/ISwapRouter.sol';
 import './base/PeripheryImmutableState.sol';
@@ -41,25 +42,34 @@ contract SwapRouter is
         address _factory,
         address _WNativeToken,
         address _poolDeployer
-    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {
-    }
+    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
 
     /// @dev Returns the pool for the given token pair. The pool contract may or may not exist.
     function getPool(address tokenA, address tokenB) private view returns (IAlgebraPool) {
-        return IAlgebraPool(PoolAddress.computeAddress(poolDeployer, PoolAddress.getPoolKey(tokenA, tokenB)));
+        return IAlgebraPool(IAlgebraFactory(factory).poolByPair(tokenA, tokenB));
+    }
+
+    /// @dev Returns the custom pool for the given deployer and token pair.
+    function getCustomPool(address deployer, address tokenA, address tokenB) private view returns (IAlgebraPool) {
+        return IAlgebraPool(IAlgebraFactory(factory).customPoolByPair(deployer, tokenA, tokenB));
     }
 
     struct SwapCallbackData {
         bytes path;
         address payer;
+        bool isCustom;
     }
 
     /// @inheritdoc IAlgebraSwapCallback
     function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata _data) external override {
         require(amount0Delta > 0 || amount1Delta > 0, 'Zero liquidity swap'); // swaps entirely within 0-liquidity regions are not supported
         SwapCallbackData memory data = abi.decode(_data, (SwapCallbackData));
+        if (data.isCustom) {
+            algebraSwapCustomCallback(amount0Delta, amount1Delta, data);
+            return;
+        }
         (address tokenIn, address tokenOut) = data.path.decodeFirstPool();
-        CallbackValidation.verifyCallback(poolDeployer, tokenIn, tokenOut);
+        CallbackValidation.verifyCallbackFromFactory(factory, tokenIn, tokenOut);
 
         (bool isExactInput, uint256 amountToPay) = amount0Delta > 0
             ? (tokenIn < tokenOut, uint256(amount0Delta))
@@ -74,6 +84,28 @@ contract SwapRouter is
             } else {
                 amountInCached = amountToPay;
                 tokenIn = tokenOut; // swap in/out because exact output swaps are reversed
+                pay(tokenIn, data.payer, msg.sender, amountToPay);
+            }
+        }
+    }
+
+    function algebraSwapCustomCallback(int256 amount0Delta, int256 amount1Delta, SwapCallbackData memory data) private {
+        require(amount0Delta > 0 || amount1Delta > 0, 'Zero liquidity swap');
+        (address tokenIn, address deployer, address tokenOut) = data.path.decodeFirstCustomPool();
+        CallbackValidation.verifyCustomCallbackFromFactory(factory, deployer, tokenIn, tokenOut);
+
+        (bool isExactInput, uint256 amountToPay) = amount0Delta > 0
+            ? (tokenIn < tokenOut, uint256(amount0Delta))
+            : (tokenOut < tokenIn, uint256(amount1Delta));
+        if (isExactInput) {
+            pay(tokenIn, data.payer, msg.sender, amountToPay);
+        } else {
+            if (data.path.hasMultipleCustomPools()) {
+                data.path = data.path.skipTokenAndDeployer();
+                exactOutputInternalCustom(amountToPay, msg.sender, 0, data);
+            } else {
+                amountInCached = amountToPay;
+                tokenIn = tokenOut;
                 pay(tokenIn, data.payer, msg.sender, amountToPay);
             }
         }
@@ -105,6 +137,32 @@ contract SwapRouter is
         return uint256(-(zeroToOne ? amount1 : amount0));
     }
 
+    /// @dev Performs a single exact input swap through a custom pool
+    function exactInputInternalCustom(
+        uint256 amountIn,
+        address recipient,
+        uint160 limitSqrtPrice,
+        SwapCallbackData memory data
+    ) private returns (uint256 amountOut) {
+        if (recipient == address(0)) recipient = address(this);
+
+        (address tokenIn, address deployer, address tokenOut) = data.path.decodeFirstCustomPool();
+
+        bool zeroToOne = tokenIn < tokenOut;
+
+        (int256 amount0, int256 amount1) = getCustomPool(deployer, tokenIn, tokenOut).swap(
+            recipient,
+            zeroToOne,
+            amountIn.toInt256(),
+            limitSqrtPrice == 0
+                ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                : limitSqrtPrice,
+            abi.encode(data)
+        );
+
+        return uint256(-(zeroToOne ? amount1 : amount0));
+    }
+
     /// @inheritdoc ISwapRouter
     function exactInputSingle(
         ExactInputSingleParams calldata params
@@ -113,7 +171,28 @@ contract SwapRouter is
             params.amountIn,
             params.recipient,
             params.limitSqrtPrice,
-            SwapCallbackData({path: abi.encodePacked(params.tokenIn, params.tokenOut), payer: msg.sender})
+            SwapCallbackData({
+                path: abi.encodePacked(params.tokenIn, params.tokenOut),
+                payer: msg.sender,
+                isCustom: false
+            })
+        );
+        require(amountOut >= params.amountOutMinimum, 'Too little received');
+    }
+
+    /// @inheritdoc ISwapRouter
+    function exactInputSingleCustom(
+        ExactInputSingleCustomParams calldata params
+    ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
+        amountOut = exactInputInternalCustom(
+            params.amountIn,
+            params.recipient,
+            params.limitSqrtPrice,
+            SwapCallbackData({
+                path: abi.encodePacked(params.tokenIn, params.deployer, params.tokenOut),
+                payer: msg.sender,
+                isCustom: true
+            })
         );
         require(amountOut >= params.amountOutMinimum, 'Too little received');
     }
@@ -134,7 +213,8 @@ contract SwapRouter is
                 0,
                 SwapCallbackData({
                     path: params.path.getFirstPool(), // only the first pool in the path is necessary
-                    payer: payer
+                    payer: payer,
+                    isCustom: false
                 })
             );
 
@@ -152,12 +232,41 @@ contract SwapRouter is
     }
 
     /// @inheritdoc ISwapRouter
+    function exactInputCustom(
+        ExactInputParams memory params
+    ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
+        address payer = msg.sender;
+
+        while (true) {
+            bool hasMultiplePools = params.path.hasMultipleCustomPools();
+
+            params.amountIn = exactInputInternalCustom(
+                params.amountIn,
+                hasMultiplePools ? address(this) : params.recipient,
+                0,
+                SwapCallbackData({path: params.path.getFirstCustomPool(), payer: payer, isCustom: true})
+            );
+
+            if (hasMultiplePools) {
+                payer = address(this);
+                params.path = params.path.skipTokenAndDeployer();
+            } else {
+                amountOut = params.amountIn;
+                break;
+            }
+        }
+
+        require(amountOut >= params.amountOutMinimum, 'Too little received');
+    }
+
+    /// @inheritdoc ISwapRouter
     function exactInputSingleSupportingFeeOnTransferTokens(
         ExactInputSingleParams calldata params
     ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
         SwapCallbackData memory data = SwapCallbackData({
             path: abi.encodePacked(params.tokenIn, params.tokenOut),
-            payer: msg.sender
+            payer: msg.sender,
+            isCustom: false
         });
         address recipient = params.recipient == address(0) ? address(this) : params.recipient;
 
@@ -173,6 +282,36 @@ contract SwapRouter is
                 : params.limitSqrtPrice,
             abi.encode(data)
         );
+
+        amountOut = uint256(-(zeroToOne ? amount1 : amount0));
+
+        require(amountOut >= params.amountOutMinimum, 'Too little received');
+    }
+
+    /// @inheritdoc ISwapRouter
+    function exactInputSingleCustomSupportingFeeOnTransferTokens(
+        ExactInputSingleCustomParams calldata params
+    ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
+        SwapCallbackData memory data = SwapCallbackData({
+            path: abi.encodePacked(params.tokenIn, params.deployer, params.tokenOut),
+            payer: msg.sender,
+            isCustom: true
+        });
+        address recipient = params.recipient == address(0) ? address(this) : params.recipient;
+
+        bool zeroToOne = params.tokenIn < params.tokenOut;
+
+        (int256 amount0, int256 amount1) = getCustomPool(params.deployer, params.tokenIn, params.tokenOut)
+            .swapWithPaymentInAdvance(
+                msg.sender,
+                recipient,
+                zeroToOne,
+                params.amountIn.toInt256(),
+                params.limitSqrtPrice == 0
+                    ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                    : params.limitSqrtPrice,
+                abi.encode(data)
+            );
 
         amountOut = uint256(-(zeroToOne ? amount1 : amount0));
 
@@ -211,6 +350,36 @@ contract SwapRouter is
         if (limitSqrtPrice == 0) require(amountOutReceived == amountOut, 'Not received full amountOut');
     }
 
+    /// @dev Performs a single exact output swap through a custom pool
+    function exactOutputInternalCustom(
+        uint256 amountOut,
+        address recipient,
+        uint160 limitSqrtPrice,
+        SwapCallbackData memory data
+    ) private returns (uint256 amountIn) {
+        if (recipient == address(0)) recipient = address(this);
+
+        (address tokenOut, address deployer, address tokenIn) = data.path.decodeFirstCustomPool();
+
+        bool zeroToOne = tokenIn < tokenOut;
+
+        (int256 amount0Delta, int256 amount1Delta) = getCustomPool(deployer, tokenIn, tokenOut).swap(
+            recipient,
+            zeroToOne,
+            -amountOut.toInt256(),
+            limitSqrtPrice == 0
+                ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                : limitSqrtPrice,
+            abi.encode(data)
+        );
+
+        uint256 amountOutReceived;
+        (amountIn, amountOutReceived) = zeroToOne
+            ? (uint256(amount0Delta), uint256(-amount1Delta))
+            : (uint256(amount1Delta), uint256(-amount0Delta));
+        if (limitSqrtPrice == 0) require(amountOutReceived == amountOut, 'Not received full amountOut');
+    }
+
     /// @inheritdoc ISwapRouter
     function exactOutputSingle(
         ExactOutputSingleParams calldata params
@@ -220,11 +389,34 @@ contract SwapRouter is
             params.amountOut,
             params.recipient,
             params.limitSqrtPrice,
-            SwapCallbackData({path: abi.encodePacked(params.tokenOut, params.tokenIn), payer: msg.sender})
+            SwapCallbackData({
+                path: abi.encodePacked(params.tokenOut, params.tokenIn),
+                payer: msg.sender,
+                isCustom: false
+            })
         );
 
         require(amountIn <= params.amountInMaximum, 'Too much requested');
         amountInCached = DEFAULT_AMOUNT_IN_CACHED; // has to be reset even though we don't use it in the single hop case
+    }
+
+    /// @inheritdoc ISwapRouter
+    function exactOutputSingleCustom(
+        ExactOutputSingleCustomParams calldata params
+    ) external payable override checkDeadline(params.deadline) returns (uint256 amountIn) {
+        amountIn = exactOutputInternalCustom(
+            params.amountOut,
+            params.recipient,
+            params.limitSqrtPrice,
+            SwapCallbackData({
+                path: abi.encodePacked(params.tokenOut, params.deployer, params.tokenIn),
+                payer: msg.sender,
+                isCustom: true
+            })
+        );
+
+        require(amountIn <= params.amountInMaximum, 'Too much requested');
+        amountInCached = DEFAULT_AMOUNT_IN_CACHED;
     }
 
     /// @inheritdoc ISwapRouter
@@ -237,7 +429,23 @@ contract SwapRouter is
             params.amountOut,
             params.recipient,
             0,
-            SwapCallbackData({path: params.path, payer: msg.sender})
+            SwapCallbackData({path: params.path, payer: msg.sender, isCustom: false})
+        );
+
+        amountIn = amountInCached;
+        require(amountIn <= params.amountInMaximum, 'Too much requested');
+        amountInCached = DEFAULT_AMOUNT_IN_CACHED;
+    }
+
+    /// @inheritdoc ISwapRouter
+    function exactOutputCustom(
+        ExactOutputParams calldata params
+    ) external payable override checkDeadline(params.deadline) returns (uint256 amountIn) {
+        exactOutputInternalCustom(
+            params.amountOut,
+            params.recipient,
+            0,
+            SwapCallbackData({path: params.path, payer: msg.sender, isCustom: true})
         );
 
         amountIn = amountInCached;

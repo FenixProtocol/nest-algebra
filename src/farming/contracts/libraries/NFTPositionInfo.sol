@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPoolDeployer.sol';
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
 import '@cryptoalgebra/integral-periphery/contracts/libraries/PoolAddress.sol';
@@ -22,8 +23,11 @@ library NFTPositionInfo {
   ) internal view returns (IAlgebraPool pool, int24 tickLower, int24 tickUpper, uint128 liquidity) {
     address token0;
     address token1;
-    (, , token0, token1, tickLower, tickUpper, liquidity, , , , ) = nonfungiblePositionManager.positions(tokenId);
+    address customDeployer;
+    (, , token0, token1, customDeployer, tickLower, tickUpper, liquidity, , , , ) = nonfungiblePositionManager.customPositions(tokenId);
 
-    pool = IAlgebraPool(PoolAddress.computeAddress(address(deployer), PoolAddress.PoolKey({token0: token0, token1: token1})));
+    pool = customDeployer == address(0)
+      ? IAlgebraPool(PoolAddress.computeAddress(address(deployer), PoolAddress.PoolKey({token0: token0, token1: token1})))
+      : IAlgebraPool(IAlgebraFactory(nonfungiblePositionManager.factory()).customPoolByPair(customDeployer, token0, token1));
   }
 }

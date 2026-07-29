@@ -13,6 +13,13 @@ library PoolAddress {
         address token1;
     }
 
+    /// @notice The identifying key of a custom pool
+    struct CustomPoolKey {
+        address deployer;
+        address token0;
+        address token1;
+    }
+
     /// @notice Returns PoolKey: the ordered tokens
     /// @param tokenA The first token of a pool, unsorted
     /// @param tokenB The second token of a pool, unsorted
@@ -20,6 +27,16 @@ library PoolAddress {
     function getPoolKey(address tokenA, address tokenB) internal pure returns (PoolKey memory) {
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
         return PoolKey({token0: tokenA, token1: tokenB});
+    }
+
+    /// @notice Returns CustomPoolKey: the custom deployer and ordered tokens
+    /// @param deployer The custom pool deployer address
+    /// @param tokenA The first token of a pool, unsorted
+    /// @param tokenB The second token of a pool, unsorted
+    /// @return Poolkey The pool details with ordered token0 and token1 assignments
+    function getCustomPoolKey(address deployer, address tokenA, address tokenB) internal pure returns (CustomPoolKey memory) {
+        if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        return CustomPoolKey({deployer: deployer, token0: tokenA, token1: tokenB});
     }
 
     /// @notice Deterministically computes the pool address given the poolDeployer and PoolKey
@@ -36,6 +53,29 @@ library PoolAddress {
                             hex'ff',
                             poolDeployer,
                             keccak256(abi.encode(key.token0, key.token1)),
+                            POOL_INIT_CODE_HASH
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    /// @notice Deterministically computes the custom pool address given the custom poolDeployer and CustomPoolKey
+    /// @param customPoolDeployer The Algebra custom poolDeployer contract address
+    /// @param key The CustomPoolKey
+    /// @return pool The contract address of the Algebra custom pool
+    function computeCustomAddress(address customPoolDeployer, CustomPoolKey memory key) internal pure returns (address pool) {
+        require(key.deployer != address(0), 'Invalid deployer');
+        require(key.token0 < key.token1, 'Invalid order of tokens');
+        pool = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            hex'ff',
+                            customPoolDeployer,
+                            keccak256(abi.encode(key.deployer, key.token0, key.token1)),
                             POOL_INIT_CODE_HASH
                         )
                     )

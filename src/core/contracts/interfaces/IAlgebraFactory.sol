@@ -28,6 +28,13 @@ interface IAlgebraFactory {
   /// @param pool The address of the created pool
   event Pool(address indexed token0, address indexed token1, address pool);
 
+  /// @notice Emitted when a custom pool is created
+  /// @param deployer The custom pool deployer address
+  /// @param token0 The first token of the pool by address sort order
+  /// @param token1 The second token of the pool by address sort order
+  /// @param pool The address of the created pool
+  event CustomPool(address indexed deployer, address indexed token0, address indexed token1, address pool);
+
   /// @notice Emitted when the default community fee is changed
   /// @param newDefaultCommunityFee The new default community fee value
   event DefaultCommunityFee(uint16 newDefaultCommunityFee);
@@ -52,6 +59,10 @@ interface IAlgebraFactory {
   /// @param mode_ The new pools creation mode
   event PublicPoolCreationMode(bool mode_);
 
+  /// @notice Emitted when customPoolDeployer is initialized
+  /// @param customPoolDeployerAddress The custom pool deployer address
+  event CustomPoolDeployer(address customPoolDeployerAddress);
+
   /// @notice role that can change communityFee and tickspacing in pools
   /// @return The hash corresponding to this role
   function POOLS_ADMINISTRATOR_ROLE() external view returns (bytes32);
@@ -59,6 +70,10 @@ interface IAlgebraFactory {
   /// @notice role that can create pools when public pool creation is disabled
   /// @return The hash corresponding to this role
   function POOLS_CREATOR_ROLE() external view returns (bytes32);
+
+  /// @notice role that can call `createCustomPool`
+  /// @return The hash corresponding to this role
+  function CUSTOM_POOL_DEPLOYER() external view returns (bytes32);
 
   /// @notice Returns `true` if `account` has been granted `role` or `account` is owner.
   /// @param role The hash corresponding to the role
@@ -74,6 +89,10 @@ interface IAlgebraFactory {
   /// @notice Returns the current poolDeployerAddress
   /// @return The address of the poolDeployer
   function poolDeployer() external view returns (address);
+
+  /// @notice Returns the custom pool deployer address
+  /// @return The address of the custom pool deployer
+  function customPoolDeployer() external view returns (address);
 
   /// @notice Returns the status of enable public pool creation mode
   /// @return bool Whether the public creation mode is enable or not
@@ -118,12 +137,26 @@ interface IAlgebraFactory {
   /// @return pool The contract address of the Algebra pool
   function computePoolAddress(address token0, address token1) external view returns (address pool);
 
+  /// @notice Deterministically computes a custom pool address for a custom deployer and token pair
+  /// @param customDeployer The custom pool deployer identifier used in the CREATE2 salt
+  /// @param token0 first token
+  /// @param token1 second token
+  /// @return customPool The contract address of the Algebra custom pool
+  function computeCustomPoolAddress(address customDeployer, address token0, address token1) external view returns (address customPool);
+
   /// @notice Returns the pool address for a given pair of tokens, or address 0 if it does not exist
   /// @dev tokenA and tokenB may be passed in either token0/token1 or token1/token0 order
   /// @param tokenA The contract address of either token0 or token1
   /// @param tokenB The contract address of the other token
   /// @return pool The pool address
   function poolByPair(address tokenA, address tokenB) external view returns (address pool);
+
+  /// @notice Returns the custom pool address for a custom deployer and pair of tokens, or address 0 if it does not exist
+  /// @param customDeployer The custom pool deployer identifier
+  /// @param tokenA The contract address of either token0 or token1
+  /// @param tokenB The contract address of the other token
+  /// @return customPool The custom pool address
+  function customPoolByPair(address customDeployer, address tokenA, address tokenB) external view returns (address customPool);
 
   /// @notice returns keccak256 of AlgebraPool init bytecode.
   /// @dev the hash value changes with any change in the pool bytecode
@@ -140,6 +173,21 @@ interface IAlgebraFactory {
   /// The call will revert if the pool already exists or the token arguments are invalid.
   /// @return pool The address of the newly created pool
   function createPool(address tokenA, address tokenB) external returns (address pool);
+
+  /// @notice Creates a custom pool for the given two tokens using `customDeployer`
+  /// @param customDeployer The custom pool deployer identifier, also used for custom pool address calculation
+  /// @param creator The initiator of custom pool creation
+  /// @param tokenA One of the two tokens in the desired pool
+  /// @param tokenB The other of the two tokens in the desired pool
+  /// @param data Additional data for plugin creation
+  /// @return customPool The address of the newly created custom pool
+  function createCustomPool(
+    address customDeployer,
+    address creator,
+    address tokenA,
+    address tokenB,
+    bytes calldata data
+  ) external returns (address customPool);
 
   /// @dev updates pools creation mode
   /// @param mode_ the new mode for pools creation proccess

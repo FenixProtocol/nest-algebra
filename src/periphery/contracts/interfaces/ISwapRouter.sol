@@ -24,6 +24,22 @@ interface ISwapRouter is IAlgebraSwapCallback {
     /// @return amountOut The amount of the received token
     function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 
+    struct ExactInputSingleCustomParams {
+        address tokenIn;
+        address tokenOut;
+        address deployer;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 limitSqrtPrice;
+    }
+
+    /// @notice Swaps `amountIn` through a single custom pool
+    /// @param params The parameters necessary for the swap, encoded as `ExactInputSingleCustomParams` in calldata
+    /// @return amountOut The amount of the received token
+    function exactInputSingleCustom(ExactInputSingleCustomParams calldata params) external payable returns (uint256 amountOut);
+
     struct ExactInputParams {
         bytes path;
         address recipient;
@@ -36,6 +52,11 @@ interface ISwapRouter is IAlgebraSwapCallback {
     /// @param params The parameters necessary for the multi-hop swap, encoded as `ExactInputParams` in calldata
     /// @return amountOut The amount of the received token
     function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
+
+    /// @notice Swaps `amountIn` along a custom path encoded as token,deployer,token,deployer,token...
+    /// @param params The parameters necessary for the multi-hop custom swap, encoded as `ExactInputParams` in calldata
+    /// @return amountOut The amount of the received token
+    function exactInputCustom(ExactInputParams calldata params) external payable returns (uint256 amountOut);
 
     struct ExactOutputSingleParams {
         address tokenIn;
@@ -53,6 +74,22 @@ interface ISwapRouter is IAlgebraSwapCallback {
     /// @return amountIn The amount of the input token
     function exactOutputSingle(ExactOutputSingleParams calldata params) external payable returns (uint256 amountIn);
 
+    struct ExactOutputSingleCustomParams {
+        address tokenIn;
+        address tokenOut;
+        address deployer;
+        address recipient;
+        uint256 deadline;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+        uint160 limitSqrtPrice;
+    }
+
+    /// @notice Swaps as little as possible through a single custom pool
+    /// @param params The parameters necessary for the swap, encoded as `ExactOutputSingleCustomParams` in calldata
+    /// @return amountIn The amount of the input token
+    function exactOutputSingleCustom(ExactOutputSingleCustomParams calldata params) external payable returns (uint256 amountIn);
+
     struct ExactOutputParams {
         bytes path;
         address recipient;
@@ -67,11 +104,23 @@ interface ISwapRouter is IAlgebraSwapCallback {
     /// @return amountIn The amount of the input token
     function exactOutput(ExactOutputParams calldata params) external payable returns (uint256 amountIn);
 
+    /// @notice Swaps as little as possible along a custom path encoded as token,deployer,token,deployer,token... in reverse order
+    /// @param params The parameters necessary for the multi-hop custom swap, encoded as `ExactOutputParams` in calldata
+    /// @return amountIn The amount of the input token
+    function exactOutputCustom(ExactOutputParams calldata params) external payable returns (uint256 amountIn);
+
     /// @notice Swaps `amountIn` of one token for as much as possible of another along the specified path
     /// @dev Unlike standard swaps, handles transferring from user before the actual swap.
     /// @param params The parameters necessary for the swap, encoded as `ExactInputSingleParams` in calldata
     /// @return amountOut The amount of the received token
     function exactInputSingleSupportingFeeOnTransferTokens(
         ExactInputSingleParams calldata params
+    ) external payable returns (uint256 amountOut);
+
+    /// @notice Swaps `amountIn` through a single custom pool and supports fee-on-transfer input tokens
+    /// @param params The parameters necessary for the swap, encoded as `ExactInputSingleCustomParams` in calldata
+    /// @return amountOut The amount of the received token
+    function exactInputSingleCustomSupportingFeeOnTransferTokens(
+        ExactInputSingleCustomParams calldata params
     ) external payable returns (uint256 amountOut);
 }

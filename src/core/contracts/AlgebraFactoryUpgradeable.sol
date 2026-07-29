@@ -24,6 +24,9 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
   bytes32 public constant override POOLS_CREATOR_ROLE = keccak256('POOLS_CREATOR'); // it`s here for the public visibility of the value
 
   /// @inheritdoc IAlgebraFactory
+  bytes32 public constant override CUSTOM_POOL_DEPLOYER = keccak256('CUSTOM_POOL_DEPLOYER');
+
+  /// @inheritdoc IAlgebraFactory
   /// @dev keccak256 of AlgebraPool init bytecode. Used to compute pool address deterministically
   bytes32 public constant override POOL_INIT_CODE_HASH = 0xe4894f29e2491e531db85584561de8b8869774d41313c860cf4089d80a51d8a4;
 
@@ -54,6 +57,12 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
   /// @inheritdoc IAlgebraFactory
   mapping(address => mapping(address => address)) public override poolByPair;
 
+  /// @inheritdoc IAlgebraFactory
+  address public override customPoolDeployer;
+
+  /// @inheritdoc IAlgebraFactory
+  mapping(address => mapping(address => mapping(address => address))) public override customPoolByPair;
+
   /// @dev time delay before ownership renouncement can be finished
   uint256 private constant RENOUNCE_OWNERSHIP_DELAY = 1 days;
 
@@ -78,6 +87,14 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
 
     emit DefaultTickspacing(Constants.INIT_DEFAULT_TICK_SPACING);
     emit DefaultFee(Constants.INIT_DEFAULT_FEE);
+  }
+
+  /// @notice Initializes the custom pool deployer after upgrading an existing factory proxy.
+  /// @param _customPoolDeployer The pool deployer instance used only for custom pools
+  function initializeCustomPoolDeployer(address _customPoolDeployer) external reinitializer(2) onlyOwner {
+    require(_customPoolDeployer != address(0));
+    customPoolDeployer = _customPoolDeployer;
+    emit CustomPoolDeployer(_customPoolDeployer);
   }
 
   /// @inheritdoc IAlgebraFactory
@@ -106,6 +123,15 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
   }
 
   /// @inheritdoc IAlgebraFactory
+  function computeCustomPoolAddress(address customDeployer, address token0, address token1) public view override returns (address customPool) {
+    customPool = address(
+      uint160(
+        uint256(keccak256(abi.encodePacked(hex'ff', customPoolDeployer, keccak256(abi.encode(customDeployer, token0, token1)), POOL_INIT_CODE_HASH)))
+      )
+    );
+  }
+
+  /// @inheritdoc IAlgebraFactory
   function createPool(address tokenA, address tokenB) external override returns (address pool) {
     if (!isPublicPoolCreationMode) {
       _checkRole(POOLS_CREATOR_ROLE);
@@ -131,6 +157,49 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
 
     if (address(vaultFactory) != address(0)) {
       vaultFactory.createVaultForPool(pool);
+    }
+  }
+
+  /// @inheritdoc IAlgebraFactory
+  function createCustomPool(
+    address customDeployer,
+    address creator,
+    address tokenA,
+    address tokenB,
+    bytes calldata data
+  ) external override returns (address customPool) {
+    require(hasRole(CUSTOM_POOL_DEPLOYER, msg.sender), 'Can`t create custom pools');
+    require(customPoolDeployer != address(0));
+    require(customDeployer != address(0));
+    require(tokenA != tokenB);
+    (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+    require(token0 != address(0));
+    require(customPoolByPair[customDeployer][token0][token1] == address(0));
+
+    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(
+      computeCustomPoolAddress(customDeployer, token0, token1),
+      creator,
+      customDeployer,
+      token0,
+      token1,
+      data
+    );
+
+    customPool = IAlgebraPoolDeployer(customPoolDeployer).deploy(
+      plugin,
+      token0,
+      token1,
+      customDeployer
+    );
+
+    IAlgebraPluginFactory(msg.sender).afterCreatePoolHook(plugin, customPool, customDeployer);
+
+    customPoolByPair[customDeployer][token0][token1] = customPool;
+    customPoolByPair[customDeployer][token1][token0] = customPool;
+    emit CustomPool(customDeployer, token0, token1, customPool);
+
+    if (address(vaultFactory) != address(0)) {
+      vaultFactory.createVaultForPool(customPool);
     }
   }
 
@@ -222,5 +291,5 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
    * variables without shifting down storage in the inheritance chain.
    * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
    */
-  uint256[50] private __gap;
+  uint256[48] private __gap;
 }

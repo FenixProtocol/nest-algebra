@@ -6,6 +6,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/FullMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraSwapCallback.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 
 import '../interfaces/IQuoter.sol';
 import '../base/PeripheryImmutableState.sol';
@@ -34,20 +35,33 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
     }
 
     function getPool(address tokenA, address tokenB) private view returns (IAlgebraPool) {
-        return IAlgebraPool(PoolAddress.computeAddress(poolDeployer, PoolAddress.getPoolKey(tokenA, tokenB)));
+        return IAlgebraPool(IAlgebraFactory(factory).poolByPair(tokenA, tokenB));
+    }
+
+    function getCustomPool(address deployer, address tokenA, address tokenB) private view returns (IAlgebraPool) {
+        return IAlgebraPool(IAlgebraFactory(factory).customPoolByPair(deployer, tokenA, tokenB));
     }
 
     /// @inheritdoc IAlgebraSwapCallback
     function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes memory path) external view override {
         require(amount0Delta > 0 || amount1Delta > 0, 'Zero liquidity swap'); // swaps entirely within 0-liquidity regions are not supported
-        (address tokenIn, address tokenOut) = path.decodeFirstPool();
-        CallbackValidation.verifyCallback(poolDeployer, tokenIn, tokenOut);
+        bool isCustom = path.length == 60;
+        address deployer;
+        address tokenIn;
+        address tokenOut;
+        if (isCustom) {
+            (tokenIn, deployer, tokenOut) = path.decodeFirstCustomPool();
+            CallbackValidation.verifyCustomCallbackFromFactory(factory, deployer, tokenIn, tokenOut);
+        } else {
+            (tokenIn, tokenOut) = path.decodeFirstPool();
+            CallbackValidation.verifyCallbackFromFactory(factory, tokenIn, tokenOut);
+        }
 
         (bool isExactInput, uint256 amountToPay, uint256 amountReceived) = amount0Delta > 0
             ? (tokenIn < tokenOut, uint256(amount0Delta), uint256(-amount1Delta))
             : (tokenOut < tokenIn, uint256(amount1Delta), uint256(-amount0Delta));
 
-        IAlgebraPool pool = getPool(tokenIn, tokenOut);
+        IAlgebraPool pool = isCustom ? getCustomPool(deployer, tokenIn, tokenOut) : getPool(tokenIn, tokenOut);
         (, , uint16 fee, , , ) = pool.globalState();
 
         if (isExactInput) {
@@ -105,6 +119,31 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
     }
 
     /// @inheritdoc IQuoter
+    function quoteExactInputSingleCustom(
+        address tokenIn,
+        address tokenOut,
+        address deployer,
+        uint256 amountIn,
+        uint160 limitSqrtPrice
+    ) public override returns (uint256 amountOut, uint16 fee) {
+        bool zeroToOne = tokenIn < tokenOut;
+
+        try
+            getCustomPool(deployer, tokenIn, tokenOut).swap(
+                address(this),
+                zeroToOne,
+                amountIn.toInt256(),
+                limitSqrtPrice == 0
+                    ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                    : limitSqrtPrice,
+                abi.encodePacked(tokenIn, deployer, tokenOut)
+            )
+        {} catch (bytes memory reason) {
+            (amountOut, fee) = parseRevertReason(reason);
+        }
+    }
+
+    /// @inheritdoc IQuoter
     function quoteExactInput(
         bytes memory path,
         uint256 amountIn
@@ -122,6 +161,29 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
             // decide whether to continue or terminate
             if (hasMultiplePools) {
                 path = path.skipToken();
+            } else {
+                return (amountIn, fees);
+            }
+            i++;
+        }
+    }
+
+    /// @inheritdoc IQuoter
+    function quoteExactInputCustom(
+        bytes memory path,
+        uint256 amountIn
+    ) external override returns (uint256 amountOut, uint16[] memory fees) {
+        fees = new uint16[](path.numCustomPools());
+        uint256 i = 0;
+        while (true) {
+            bool hasMultiplePools = path.hasMultipleCustomPools();
+
+            (address tokenIn, address deployer, address tokenOut) = path.decodeFirstCustomPool();
+
+            (amountIn, fees[i]) = quoteExactInputSingleCustom(tokenIn, tokenOut, deployer, amountIn, 0);
+
+            if (hasMultiplePools) {
+                path = path.skipTokenAndDeployer();
             } else {
                 return (amountIn, fees);
             }
@@ -157,6 +219,33 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
     }
 
     /// @inheritdoc IQuoter
+    function quoteExactOutputSingleCustom(
+        address tokenIn,
+        address tokenOut,
+        address deployer,
+        uint256 amountOut,
+        uint160 limitSqrtPrice
+    ) public override returns (uint256 amountIn, uint16 fee) {
+        bool zeroToOne = tokenIn < tokenOut;
+
+        if (limitSqrtPrice == 0) amountOutCached = amountOut;
+        try
+            getCustomPool(deployer, tokenIn, tokenOut).swap(
+                address(this),
+                zeroToOne,
+                -amountOut.toInt256(),
+                limitSqrtPrice == 0
+                    ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                    : limitSqrtPrice,
+                abi.encodePacked(tokenOut, deployer, tokenIn)
+            )
+        {} catch (bytes memory reason) {
+            if (limitSqrtPrice == 0) delete amountOutCached;
+            (amountIn, fee) = parseRevertReason(reason);
+        }
+    }
+
+    /// @inheritdoc IQuoter
     function quoteExactOutput(
         bytes memory path,
         uint256 amountOut
@@ -174,6 +263,29 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
             // decide whether to continue or terminate
             if (hasMultiplePools) {
                 path = path.skipToken();
+            } else {
+                return (amountOut, fees);
+            }
+            i++;
+        }
+    }
+
+    /// @inheritdoc IQuoter
+    function quoteExactOutputCustom(
+        bytes memory path,
+        uint256 amountOut
+    ) external override returns (uint256 amountIn, uint16[] memory fees) {
+        fees = new uint16[](path.numCustomPools());
+        uint256 i = 0;
+        while (true) {
+            bool hasMultiplePools = path.hasMultipleCustomPools();
+
+            (address tokenOut, address deployer, address tokenIn) = path.decodeFirstCustomPool();
+
+            (amountOut, fees[i]) = quoteExactOutputSingleCustom(tokenIn, tokenOut, deployer, amountOut, 0);
+
+            if (hasMultiplePools) {
+                path = path.skipTokenAndDeployer();
             } else {
                 return (amountOut, fees);
             }

@@ -64,4 +64,29 @@ contract AlgebraPoolDeployer is IAlgebraPoolDeployer {
       address(0)
     );
   }
+
+  /// @inheritdoc IAlgebraPoolDeployer
+  function deploy(
+    address plugin,
+    address token0,
+    address token1,
+    address customDeployer
+  ) external override returns (address pool) {
+    require(msg.sender == factory);
+    require(customDeployer != address(0));
+
+    (tempPlugin, tempToken0, tempToken1) = (
+      plugin,
+      token0,
+      token1
+    );
+
+    pool = address(new AlgebraPool{salt: keccak256(abi.encode(customDeployer, token0, token1))}());
+
+    (tempPlugin, tempToken0, tempToken1) = (
+      address(0),
+      address(0),
+      address(0)
+    );
+  }
 }

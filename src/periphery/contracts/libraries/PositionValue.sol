@@ -2,6 +2,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/Constants.sol';
 import '../interfaces/INonfungiblePositionManager.sol';
@@ -15,6 +16,7 @@ library PositionValue {
     struct PositionCache {
         address token0;
         address token1;
+        address deployer;
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
@@ -59,7 +61,7 @@ library PositionValue {
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (, , , , int24 tickLower, int24 tickUpper, uint128 liquidity, , , , ) = positionManager.positions(tokenId);
+        (, , , , , int24 tickLower, int24 tickUpper, uint128 liquidity, , , , ) = positionManager.customPositions(tokenId);
 
         return _principal(sqrtRatioX96, tickLower, tickUpper, liquidity);
     }
@@ -97,12 +99,14 @@ library PositionValue {
     ) private view returns (uint256 amount0, uint256 amount1) {
         unchecked {
             (uint256 poolFeeGrowthInside0LastX128, uint256 poolFeeGrowthInside1LastX128) = _getFeeGrowthInside(
-                IAlgebraPool(
-                    PoolAddress.computeAddress(
-                        positionManager.poolDeployer(),
-                        PoolAddress.PoolKey({token0: position.token0, token1: position.token1})
+                position.deployer == address(0)
+                    ? IAlgebraPool(
+                        PoolAddress.computeAddress(
+                            positionManager.poolDeployer(),
+                            PoolAddress.PoolKey({token0: position.token0, token1: position.token1})
+                        )
                     )
-                ),
+                    : IAlgebraPool(IAlgebraFactory(positionManager.factory()).customPoolByPair(position.deployer, position.token0, position.token1)),
                 position.tickLower,
                 position.tickUpper
             );
@@ -134,6 +138,7 @@ library PositionValue {
             ,
             address token0,
             address token1,
+            address deployer,
             int24 tickLower,
             int24 tickUpper,
             uint128 liquidity,
@@ -141,12 +146,13 @@ library PositionValue {
             uint256 feeGrowthInside1LastX128,
             uint128 tokensOwed0,
             uint128 tokensOwed1
-        ) = positionManager.positions(tokenId);
+        ) = positionManager.customPositions(tokenId);
 
         return
             PositionCache(
                 token0,
                 token1,
+                deployer,
                 tickLower,
                 tickUpper,
                 liquidity,

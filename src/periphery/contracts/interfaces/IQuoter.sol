@@ -17,6 +17,14 @@ interface IQuoter {
         external
         returns (uint256 amountOut, uint16[] memory fees);
 
+    /// @notice Returns the amount out received for an exact input custom path encoded as token,deployer,token...
+    /// @param path The custom path of the swap
+    /// @param amountIn The amount of the first token to swap
+    /// @return amountOut The amount of the last token that would be received
+    function quoteExactInputCustom(bytes memory path, uint256 amountIn)
+        external
+        returns (uint256 amountOut, uint16[] memory fees);
+
     /// @notice Returns the amount out received for a given exact input but for a swap of a single pool
     /// @param tokenIn The token being swapped in
     /// @param tokenOut The token being swapped out
@@ -30,11 +38,25 @@ interface IQuoter {
         uint160 limitSqrtPrice
     ) external returns (uint256 amountOut, uint16 fee);
 
+    /// @notice Returns the amount out received for a given exact input custom pool swap
+    function quoteExactInputSingleCustom(
+        address tokenIn,
+        address tokenOut,
+        address deployer,
+        uint256 amountIn,
+        uint160 limitSqrtPrice
+    ) external returns (uint256 amountOut, uint16 fee);
+
     /// @notice Returns the amount in required for a given exact output swap without executing the swap
     /// @param path The path of the swap, i.e. each token pair. Path must be provided in reverse order
     /// @param amountOut The amount of the last token to receive
     /// @return amountIn The amount of first token required to be paid
     function quoteExactOutput(bytes memory path, uint256 amountOut)
+        external
+        returns (uint256 amountIn, uint16[] memory fees);
+
+    /// @notice Returns the amount in required for an exact output custom path encoded as token,deployer,token... in reverse order
+    function quoteExactOutputCustom(bytes memory path, uint256 amountOut)
         external
         returns (uint256 amountIn, uint16[] memory fees);
 
@@ -47,6 +69,15 @@ interface IQuoter {
     function quoteExactOutputSingle(
         address tokenIn,
         address tokenOut,
+        uint256 amountOut,
+        uint160 limitSqrtPrice
+    ) external returns (uint256 amountIn, uint16 fee);
+
+    /// @notice Returns the amount in required for a given exact output custom pool swap
+    function quoteExactOutputSingleCustom(
+        address tokenIn,
+        address tokenOut,
+        address deployer,
         uint256 amountOut,
         uint160 limitSqrtPrice
     ) external returns (uint256 amountIn, uint16 fee);

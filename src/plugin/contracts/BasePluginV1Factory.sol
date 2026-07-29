@@ -48,6 +48,15 @@ contract BasePluginV1Factory is IBasePluginV1Factory {
     return _createPlugin(pool);
   }
 
+  /// @inheritdoc IAlgebraPluginFactory
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
+    require(msg.sender == algebraFactory);
+    return _createPlugin(pool);
+  }
+
+  /// @inheritdoc IAlgebraPluginFactory
+  function afterCreatePoolHook(address, address, address) external override {}
+
   /// @inheritdoc IBasePluginV1Factory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);

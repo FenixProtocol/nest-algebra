@@ -34,4 +34,17 @@ interface IAlgebraPoolDeployer {
     address token0,
     address token1
   ) external returns (address pool);
+
+  /// @dev Deploys a custom pool with a deployer-aware CREATE2 salt.
+  /// @param plugin The pool associated plugin (if any)
+  /// @param token0 The first token of the pool by address sort order
+  /// @param token1 The second token of the pool by address sort order
+  /// @param customDeployer The custom pool deployer address used in the salt
+  /// @return pool The deployed pool's address
+  function deploy(
+    address plugin,
+    address token0,
+    address token1,
+    address customDeployer
+  ) external returns (address pool);
 }

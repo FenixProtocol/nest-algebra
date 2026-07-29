@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import './PoolAddress.sol';
 
 /// @notice Provides validation for callbacks from Algebra Pools
@@ -30,6 +31,32 @@ library CallbackValidation {
         PoolAddress.PoolKey memory poolKey
     ) internal view returns (IAlgebraPool pool) {
         pool = IAlgebraPool(PoolAddress.computeAddress(poolDeployer, poolKey));
+        require(msg.sender == address(pool), 'Invalid caller of callback');
+    }
+
+    /// @notice Returns the address of a valid classic Algebra Pool from the factory registry
+    /// @param factory The Algebra factory address
+    /// @param tokenA The contract address of either token0 or token1
+    /// @param tokenB The contract address of the other token
+    /// @return pool The Algebra pool contract address
+    function verifyCallbackFromFactory(address factory, address tokenA, address tokenB) internal view returns (IAlgebraPool pool) {
+        pool = IAlgebraPool(IAlgebraFactory(factory).poolByPair(tokenA, tokenB));
+        require(msg.sender == address(pool), 'Invalid caller of callback');
+    }
+
+    /// @notice Returns the address of a valid custom Algebra Pool from the factory registry
+    /// @param factory The Algebra factory address
+    /// @param deployer The custom pool deployer identifier
+    /// @param tokenA The contract address of either token0 or token1
+    /// @param tokenB The contract address of the other token
+    /// @return pool The Algebra pool contract address
+    function verifyCustomCallbackFromFactory(
+        address factory,
+        address deployer,
+        address tokenA,
+        address tokenB
+    ) internal view returns (IAlgebraPool pool) {
+        pool = IAlgebraPool(IAlgebraFactory(factory).customPoolByPair(deployer, tokenA, tokenB));
         require(msg.sender == address(pool), 'Invalid caller of callback');
     }
 }

@@ -71,6 +71,9 @@ contract NonfungiblePositionManager is
     /// @dev Pool keys by pool ID, to save on SSTOREs for position data
     mapping(uint80 poolId => PoolAddress.PoolKey poolKey) private _poolIdToPoolKey;
 
+    /// @dev Custom deployer by pool ID, address(0) for classic pools
+    mapping(uint80 poolId => address deployer) private _poolIdToCustomDeployer;
+
     /// @dev The token ID position data
     mapping(uint256 tokenId => Position position) private _positions;
 
@@ -141,6 +144,51 @@ contract NonfungiblePositionManager is
     }
 
     /// @inheritdoc INonfungiblePositionManager
+    function customPositions(
+        uint256 tokenId
+    )
+        external
+        view
+        override
+        returns (
+            uint88 nonce,
+            address operator,
+            address token0,
+            address token1,
+            address deployer,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        )
+    {
+        Position storage position = _positions[tokenId];
+        uint80 poolId = position.poolId;
+        tickLower = position.tickLower;
+        tickUpper = position.tickUpper;
+        liquidity = position.liquidity;
+        require(poolId != 0, 'Invalid token ID');
+        PoolAddress.PoolKey storage poolKey = _poolIdToPoolKey[poolId];
+        return (
+            position.nonce,
+            position.operator,
+            poolKey.token0,
+            poolKey.token1,
+            _poolIdToCustomDeployer[poolId],
+            tickLower,
+            tickUpper,
+            liquidity,
+            position.feeGrowthInside0LastX128,
+            position.feeGrowthInside1LastX128,
+            position.tokensOwed0,
+            position.tokensOwed1
+        );
+    }
+
+    /// @inheritdoc INonfungiblePositionManager
     function mint(
         MintParams calldata params
     )
@@ -150,12 +198,49 @@ contract NonfungiblePositionManager is
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
     {
+        return
+            _mintAlgebraPosition(
+                MintCustomParams({
+                    token0: params.token0,
+                    token1: params.token1,
+                    deployer: address(0),
+                    tickLower: params.tickLower,
+                    tickUpper: params.tickUpper,
+                    amount0Desired: params.amount0Desired,
+                    amount1Desired: params.amount1Desired,
+                    amount0Min: params.amount0Min,
+                    amount1Min: params.amount1Min,
+                    recipient: params.recipient,
+                    deadline: params.deadline
+                })
+            );
+    }
+
+    /// @inheritdoc INonfungiblePositionManager
+    function mintCustom(
+        MintCustomParams calldata params
+    )
+        external
+        payable
+        override
+        checkDeadline(params.deadline)
+        returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
+    {
+        require(params.deployer != address(0), 'Invalid deployer');
+
+        return _mintAlgebraPosition(params);
+    }
+
+    function _mintAlgebraPosition(
+        MintCustomParams memory params
+    ) private returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         IAlgebraPool pool;
         uint128 liquidityDesired;
         (liquidityDesired, liquidity, amount0, amount1, pool) = addLiquidity(
             AddLiquidityParams({
                 token0: params.token0,
                 token1: params.token1,
+                deployer: params.deployer,
                 recipient: address(this),
                 tickLower: params.tickLower,
                 tickUpper: params.tickUpper,
@@ -175,10 +260,10 @@ contract NonfungiblePositionManager is
             params.tickUpper
         );
 
-        // idempotent set
         uint80 poolId = _cachePoolKey(
             address(pool),
-            PoolAddress.PoolKey({token0: params.token0, token1: params.token1})
+            PoolAddress.PoolKey({token0: params.token0, token1: params.token1}),
+            params.deployer
         );
 
         _positions[tokenId] = Position({
@@ -198,17 +283,27 @@ contract NonfungiblePositionManager is
     }
 
     /// @dev Caches a pool key
-    function _cachePoolKey(address pool, PoolAddress.PoolKey memory poolKey) private returns (uint80 poolId) {
+    function _cachePoolKey(
+        address pool,
+        PoolAddress.PoolKey memory poolKey,
+        address deployer
+    ) private returns (uint80 poolId) {
         if ((poolId = _poolIds[pool]) == 0) {
             unchecked {
                 _poolIds[pool] = (poolId = _nextPoolId++);
             }
             _poolIdToPoolKey[poolId] = poolKey;
+            _poolIdToCustomDeployer[poolId] = deployer;
         }
     }
 
     function _getPoolById(uint80 poolId) private view returns (address) {
-        return PoolAddress.computeAddress(poolDeployer, _poolIdToPoolKey[poolId]);
+        PoolAddress.PoolKey storage poolKey = _poolIdToPoolKey[poolId];
+        address deployer = _poolIdToCustomDeployer[poolId];
+        return
+            deployer == address(0)
+                ? PoolAddress.computeAddress(poolDeployer, poolKey)
+                : IAlgebraFactory(factory).customPoolByPair(deployer, poolKey.token0, poolKey.token1);
     }
 
     function _updateUncollectedFees(
@@ -268,6 +363,7 @@ contract NonfungiblePositionManager is
             AddLiquidityParams({
                 token0: poolKey.token0,
                 token1: poolKey.token1,
+                deployer: _poolIdToCustomDeployer[position.poolId],
                 tickLower: tickLower,
                 tickUpper: tickUpper,
                 amount0Desired: params.amount0Desired,
