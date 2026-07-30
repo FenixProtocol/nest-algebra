@@ -2,13 +2,19 @@ import { Wallet, MaxUint256 } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { expect } from './shared/expect';
-import { NonfungibleTokenPositionDescriptor, MockTimeNonfungiblePositionManager, TestERC20 } from '../typechain';
+import {
+  IAlgebraFactory,
+  NonfungibleTokenPositionDescriptor,
+  MockTimeNonfungiblePositionManager,
+  TestERC20,
+} from '../typechain';
 import completeFixture from './shared/completeFixture';
 import { encodePriceSqrt } from './shared/encodePriceSqrt';
 import { FeeAmount, TICK_SPACINGS, tokenAddresses } from './shared/constants';
 import { getMaxTick, getMinTick } from './shared/ticks';
 import { sortedTokens } from './shared/tokenSort';
 import { extractJSONFromURI } from './shared/extractJSONFromURI';
+import { createCustomPool } from './shared/quoter';
 
 type TestERC20WithAddress = TestERC20 & { address: string | undefined };
 
@@ -19,6 +25,7 @@ describe('NonfungibleTokenPositionDescriptor', () => {
     nftPositionDescriptor: NonfungibleTokenPositionDescriptor;
     tokens: [TestERC20WithAddress, TestERC20WithAddress, TestERC20WithAddress];
     nft: MockTimeNonfungiblePositionManager;
+    factory: IAlgebraFactory;
   }> = async () => {
     const { factory, nft, router, nftDescriptor } = await loadFixture(completeFixture);
     const tokenFactory = await ethers.getContractFactory('TestERC20');
@@ -41,12 +48,14 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       nftPositionDescriptor: nftDescriptor,
       tokens,
       nft,
+      factory,
     };
   };
 
   let nftPositionDescriptor: NonfungibleTokenPositionDescriptor;
   let tokens: [TestERC20WithAddress, TestERC20WithAddress, TestERC20WithAddress];
   let nft: MockTimeNonfungiblePositionManager;
+  let factory: IAlgebraFactory;
   let wnative: TestERC20;
 
   before('create fixture loader', async () => {
@@ -54,7 +63,7 @@ describe('NonfungibleTokenPositionDescriptor', () => {
   });
 
   beforeEach('load fixture', async () => {
-    ({ tokens, nft, nftPositionDescriptor } = await loadFixture(nftPositionDescriptorCompleteFixture));
+    ({ tokens, nft, factory, nftPositionDescriptor } = await loadFixture(nftPositionDescriptorCompleteFixture));
     const tokenFactory = await ethers.getContractFactory('TestERC20');
     wnative = tokenFactory.attach(await nftPositionDescriptor.WNativeToken()) as any as TestERC20;
   });
@@ -157,6 +166,20 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       const metadata = extractJSONFromURI(await nft.tokenURI(1));
       expect(metadata.name).to.match(/TEST\/TEST/);
       expect(metadata.description).to.match(/TEST-TEST/);
+    });
+
+    it('displays custom pool address for custom positions', async () => {
+      const [token0, token1] = await sortedTokens(tokens[2], tokens[1]);
+      await token0.approve(nft, MaxUint256);
+      await token1.approve(nft, MaxUint256);
+
+      const token0Address = await token0.getAddress();
+      const token1Address = await token1.getAddress();
+      const customDeployer = await createCustomPool(nft, factory, wallets[0], token0Address, token1Address);
+      const expectedPoolAddress = await factory.computeCustomPoolAddress(customDeployer, token0Address, token1Address);
+
+      const metadata = extractJSONFromURI(await nft.tokenURI(1));
+      expect(metadata.description.toLowerCase()).to.include(expectedPoolAddress.toLowerCase());
     });
   });
 });
