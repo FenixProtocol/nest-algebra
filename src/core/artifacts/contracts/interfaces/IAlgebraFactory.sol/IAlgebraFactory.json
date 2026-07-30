@@ -647,19 +647,6 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "newPoolDeployer",
-          "type": "address"
-        }
-      ],
-      "name": "setPoolDeployer",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
           "name": "newVaultFactory",
           "type": "address"
         }
