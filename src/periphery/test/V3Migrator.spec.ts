@@ -48,7 +48,7 @@ describe('V3Migrator', () => {
     // deploy the migrator
     const migrator = (await (
       await ethers.getContractFactory('V3Migrator')
-    ).deploy(factory, wnative, nft, await factory.poolDeployer(), await factory.customPoolDeployer())) as any as V3Migrator;
+    ).deploy(factory, wnative, nft, await factory.poolDeployer())) as any as V3Migrator;
 
     return {
       factoryV2,

@@ -46,12 +46,7 @@ describe('Quoter', () => {
     }
 
     const quoterFactory = await ethers.getContractFactory('Quoter');
-    quoter = (await quoterFactory.deploy(
-      factory,
-      wnative,
-      await factory.poolDeployer(),
-      await factory.customPoolDeployer()
-    )) as any as Quoter;
+    quoter = (await quoterFactory.deploy(factory, wnative, await factory.poolDeployer())) as any as Quoter;
 
     return {
       tokens: _tokens,

@@ -10,9 +10,8 @@ contract MockTimeNonfungiblePositionManager is NonfungiblePositionManager {
         address _factory,
         address _WNativeToken,
         address _tokenDescriptor,
-        address _poolDeployer,
-        address _customPoolDeployer
-    ) NonfungiblePositionManager(_factory, _WNativeToken, _tokenDescriptor, _poolDeployer, _customPoolDeployer) {}
+        address _poolDeployer
+    ) NonfungiblePositionManager(_factory, _WNativeToken, _tokenDescriptor, _poolDeployer) {}
 
     function _blockTimestamp() internal view override returns (uint256) {
         return time;

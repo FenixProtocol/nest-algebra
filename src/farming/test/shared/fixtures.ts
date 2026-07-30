@@ -84,8 +84,6 @@ const v3CoreFactoryFixture: () => Promise<[IAlgebraFactory, IAlgebraPoolDeployer
 
   const poolDeployerFactory = await ethers.getContractFactory(AlgebraPoolDeployerJson.abi, AlgebraPoolDeployerJson.bytecode);
   const _deployer = (await poolDeployerFactory.deploy(_factory)) as any as IAlgebraPoolDeployer;
-  const customPoolDeployer = (await poolDeployerFactory.deploy(_factory)) as any as IAlgebraPoolDeployer;
-  await _factory.initializeCustomPoolDeployer(customPoolDeployer);
   const basePluginFactory = await ethers.getContractFactory(PLUGIN_ABI, PLUGIN_BYTECODE);
 
   const pluginContractFactory = await ethers.getContractFactory(PLUGIN_FACTORY_ABI, PLUGIN_FACTORY_BYTECODE);
@@ -108,7 +106,7 @@ export const v3RouterFixture: () => Promise<{
   const { wnative } = await wnativeFixture();
   const [factory, deployer, pluginFactory, ownerSigner] = await v3CoreFactoryFixture();
   const routerFactory = await ethers.getContractFactory(SwapRouter.abi, SwapRouter.bytecode);
-  const router = (await routerFactory.deploy(factory, wnative, deployer, await factory.customPoolDeployer())) as any as ISwapRouter;
+  const router = (await routerFactory.deploy(factory, wnative, deployer)) as any as ISwapRouter;
 
   return { factory, wnative, deployer, router, pluginFactory, ownerSigner };
 };
@@ -166,13 +164,7 @@ export const algebraFactoryFixture: () => Promise<AlgebraFactoryFixture> = async
 
   const nftFactory = await ethers.getContractFactory(NonfungiblePositionManagerJson.abi, NonfungiblePositionManagerJson.bytecode);
 
-  const nft = (await nftFactory.deploy(
-    factory,
-    wnative,
-    positionDescriptor,
-    deployer,
-    await factory.customPoolDeployer()
-  )) as any as INonfungiblePositionManager;
+  const nft = (await nftFactory.deploy(factory, wnative, positionDescriptor, deployer)) as any as INonfungiblePositionManager;
   for (const token of tokens) {
     token.address = await token.getAddress();
   }

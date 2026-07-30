@@ -84,7 +84,7 @@ contract FarmingCenter is IFarmingCenter, IPositionFollower, Multicall {
     bytes32 _eternalIncentiveId = deposits[tokenId];
     if (_eternalIncentiveId != bytes32(0)) {
       address tokenOwner = nonfungiblePositionManager.ownerOf(tokenId);
-      (, , , , , , uint128 liquidity, , , , ) = nonfungiblePositionManager.positions(tokenId);
+      (, , , , , , , uint128 liquidity, , , , ) = nonfungiblePositionManager.positions(tokenId);
 
       IncentiveKey memory key = incentiveKeys[_eternalIncentiveId];
 

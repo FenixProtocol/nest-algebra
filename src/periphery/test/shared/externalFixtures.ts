@@ -67,9 +67,7 @@ const v3CoreFactoryFixture: () => Promise<IAlgebraFactory> = async () => {
   await _factory.initialize(poolDeployerAddress);
 
   const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
-  const poolDeployer = await poolDeployerFactory.deploy(_factory);
-  const customPoolDeployer = await poolDeployerFactory.deploy(_factory);
-  await _factory.initializeCustomPoolDeployer(customPoolDeployer);
+  await poolDeployerFactory.deploy(_factory);
 
   await _factory.setIsPublicPoolCreationMode(true);
 
@@ -85,7 +83,7 @@ export const v3RouterFixture: () => Promise<{
   const factory = await v3CoreFactoryFixture();
   const router = (await (
     await ethers.getContractFactory('MockTimeSwapRouter')
-  ).deploy(factory, wnative, await factory.poolDeployer(), await factory.customPoolDeployer())) as any as MockTimeSwapRouter;
+  ).deploy(factory, wnative, await factory.poolDeployer())) as any as MockTimeSwapRouter;
 
   return { factory, wnative, router };
 };

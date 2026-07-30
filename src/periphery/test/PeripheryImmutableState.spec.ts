@@ -14,12 +14,7 @@ describe('PeripheryImmutableState', () => {
     const { wnative, factory } = await v3RouterFixture();
 
     const stateFactory = await ethers.getContractFactory('PeripheryImmutableStateTest');
-    const state = (await stateFactory.deploy(
-      factory,
-      wnative,
-      await factory.poolDeployer(),
-      await factory.customPoolDeployer()
-    )) as any as PeripheryImmutableStateTest;
+    const state = (await stateFactory.deploy(factory, wnative, await factory.poolDeployer())) as any as PeripheryImmutableStateTest;
 
     return {
       wnative,
@@ -52,9 +47,9 @@ describe('PeripheryImmutableState', () => {
     });
   });
 
-  describe('#customPoolDeployer', () => {
-    it('points to custom pool deployer', async () => {
-      expect(await state.customPoolDeployer()).to.eq(await factory.customPoolDeployer());
+  describe('#poolDeployer', () => {
+    it('points to pool deployer', async () => {
+      expect(await state.poolDeployer()).to.eq(await factory.poolDeployer());
     });
   });
 });

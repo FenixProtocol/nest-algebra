@@ -63,8 +63,6 @@ describe('CustomPoolPluginFactory', () => {
 
     const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
     const poolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
-    const customPoolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
-    await factory.initializeCustomPoolDeployer(customPoolDeployer);
 
     const entryPointFactory = await ethers.getContractFactory(ENTRY_POINT_ABI, ENTRY_POINT_BYTECODE);
     const entryPoint = await entryPointFactory.deploy(factory);
@@ -78,7 +76,7 @@ describe('CustomPoolPluginFactory', () => {
     const customFactory = await createEmptyCustomPoolPluginFactoryProxy();
     await customFactory.initialize(factory, entryPoint, pluginImplementation);
 
-    return { factory, poolDeployer, customPoolDeployer, entryPoint, pluginImplementation, customFactory };
+    return { factory, poolDeployer, entryPoint, pluginImplementation, customFactory };
   }
 
   before('create fixture loader', async () => {

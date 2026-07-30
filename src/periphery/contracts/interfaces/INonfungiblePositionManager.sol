@@ -71,6 +71,7 @@ interface INonfungiblePositionManager is
     /// @return operator The address that is approved for spending
     /// @return token0 The address of the token0 for a specific pool
     /// @return token1 The address of the token1 for a specific pool
+    /// @return deployer The custom deployer identifier, address(0) for classic pools
     /// @return tickLower The lower end of the tick range for the position
     /// @return tickUpper The higher end of the tick range for the position
     /// @return liquidity The liquidity of the position
@@ -79,26 +80,6 @@ interface INonfungiblePositionManager is
     /// @return tokensOwed0 The uncollected amount of token0 owed to the position as of the last computation
     /// @return tokensOwed1 The uncollected amount of token1 owed to the position as of the last computation
     function positions(
-        uint256 tokenId
-    )
-        external
-        view
-        returns (
-            uint88 nonce,
-            address operator,
-            address token0,
-            address token1,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        );
-
-    /// @notice Returns position information including the custom deployer, address(0) for classic pools.
-    function customPositions(
         uint256 tokenId
     )
         external

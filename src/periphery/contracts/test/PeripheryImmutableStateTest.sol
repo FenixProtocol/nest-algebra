@@ -7,7 +7,6 @@ contract PeripheryImmutableStateTest is PeripheryImmutableState {
     constructor(
         address _factory,
         address _WNativeToken,
-        address _poolDeployer,
-        address _customPoolDeployer
-    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer, _customPoolDeployer) {}
+        address _poolDeployer
+    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
 }

@@ -4,12 +4,12 @@ pragma solidity =0.8.20;
 import '@cryptoalgebra/integral-core/contracts/libraries/SafeCast.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/callback/IAlgebraSwapCallback.sol';
 
 import '../interfaces/IQuoterV2.sol';
 import '../base/PeripheryImmutableState.sol';
 import '../libraries/Path.sol';
-import '../libraries/PoolAddress.sol';
 import '../libraries/CallbackValidation.sol';
 import '../libraries/PoolTicksCounter.sol';
 
@@ -27,23 +27,22 @@ contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState {
     /// @dev Transient storage variable used to check a safety condition in exact output swaps.
     uint256 private amountOutCached;
 
-    constructor(
-        address _factory,
-        address _WNativeToken,
-        address _poolDeployer,
-        address _customPoolDeployer
-    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer, _customPoolDeployer) {
-    }
+    constructor(address _factory, address _WNativeToken, address _poolDeployer) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
 
     function getPool(address deployer, address tokenA, address tokenB) private view returns (IAlgebraPool) {
-        return IAlgebraPool(PoolAddress.computeAddress(poolDeployer, customPoolDeployer, PoolAddress.getPoolKey(deployer, tokenA, tokenB)));
+        return
+            IAlgebraPool(
+                deployer == address(0)
+                    ? IAlgebraFactory(factory).poolByPair(tokenA, tokenB)
+                    : IAlgebraFactory(factory).customPoolByPair(deployer, tokenA, tokenB)
+            );
     }
 
     /// @inheritdoc IAlgebraSwapCallback
     function algebraSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes memory path) external view override {
         require(amount0Delta > 0 || amount1Delta > 0, 'Zero liquidity swap'); // swaps entirely within 0-liquidity regions are not supported
         (address tokenIn, address deployer, address tokenOut) = path.decodeFirstPool();
-        CallbackValidation.verifyCallback(poolDeployer, customPoolDeployer, deployer, tokenIn, tokenOut);
+        CallbackValidation.verifyCallback(factory, deployer, tokenIn, tokenOut);
 
         (bool isExactInput, uint256 amountToPay, uint256 amountReceived) = amount0Delta > 0
             ? (tokenIn < tokenOut, uint256(amount0Delta), uint256(-amount1Delta))

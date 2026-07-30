@@ -89,8 +89,7 @@ const completeFixture: () => Promise<{
     factory,
     wnative,
     nftDescriptorProxied,
-    await factory.poolDeployer(),
-    await factory.customPoolDeployer()
+    await factory.poolDeployer()
   )) as any as MockTimeNonfungiblePositionManager;
 
   return {

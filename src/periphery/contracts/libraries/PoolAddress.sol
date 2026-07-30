@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+
 /// @title Provides functions for deriving a pool address from the poolDeployer and tokens
 /// @dev Credit to Uniswap Labs under GPL-2.0-or-later license:
 /// https://github.com/Uniswap/v3-periphery
@@ -33,39 +35,11 @@ library PoolAddress {
         return PoolKey({deployer: deployer, token0: tokenA, token1: tokenB});
     }
 
-    /// @notice Deterministically computes the pool address given the poolDeployer and PoolKey
+    /// @notice Deterministically computes a classic or custom pool address for the given PoolKey
     /// @param poolDeployer The Algebra poolDeployer contract address
     /// @param key The PoolKey
     /// @return pool The contract address of the Algebra pool
     function computeAddress(address poolDeployer, PoolKey memory key) internal pure returns (address pool) {
-        require(key.deployer == address(0), 'Invalid deployer');
-        require(key.token0 < key.token1, 'Invalid order of tokens');
-        pool = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            hex'ff',
-                            poolDeployer,
-                            keccak256(abi.encode(key.token0, key.token1)),
-                            POOL_INIT_CODE_HASH
-                        )
-                    )
-                )
-            )
-        );
-    }
-
-    /// @notice Deterministically computes a classic or custom pool address for the given PoolKey
-    /// @param poolDeployer The Algebra classic poolDeployer contract address
-    /// @param customPoolDeployer The Algebra custom poolDeployer contract address
-    /// @param key The PoolKey
-    /// @return pool The contract address of the Algebra pool
-    function computeAddress(
-        address poolDeployer,
-        address customPoolDeployer,
-        PoolKey memory key
-    ) internal pure returns (address pool) {
         require(key.token0 < key.token1, 'Invalid order of tokens');
         bool isCustom = key.deployer != address(0);
         pool = address(
@@ -74,7 +48,7 @@ library PoolAddress {
                     keccak256(
                         abi.encodePacked(
                             hex'ff',
-                            isCustom ? customPoolDeployer : poolDeployer,
+                            poolDeployer,
                             isCustom ? keccak256(abi.encode(key.deployer, key.token0, key.token1)) : keccak256(abi.encode(key.token0, key.token1)),
                             POOL_INIT_CODE_HASH
                         )
@@ -82,5 +56,13 @@ library PoolAddress {
                 )
             )
         );
+    }
+
+    /// @notice Returns a classic or custom pool from the factory registry.
+    function getPool(address factory, PoolKey memory key) internal view returns (address pool) {
+        return
+            key.deployer == address(0)
+                ? IAlgebraFactory(factory).poolByPair(key.token0, key.token1)
+                : IAlgebraFactory(factory).customPoolByPair(key.deployer, key.token0, key.token1);
     }
 }

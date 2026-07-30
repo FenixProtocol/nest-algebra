@@ -125,6 +125,41 @@ describe('AlgebraFactoryUpgradeable', () => {
     await expect(factory.initialize(ZERO_ADDRESS)).to.be.reverted;
   });
 
+  describe('#setPoolDeployer', () => {
+    async function deployPoolDeployer() {
+      const poolDeployerFactory = await ethers.getContractFactory('AlgebraPoolDeployer');
+      return (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
+    }
+
+    it('fails if called by non-owner', async () => {
+      const newPoolDeployer = await deployPoolDeployer();
+
+      await expect(factory.connect(other).setPoolDeployer(newPoolDeployer)).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+
+    it('fails if new pool deployer is zero', async () => {
+      await expect(factory.setPoolDeployer(ZERO_ADDRESS)).to.be.reverted;
+    });
+
+    it('updates pool deployer and emits event', async () => {
+      const newPoolDeployer = await deployPoolDeployer();
+
+      await expect(factory.setPoolDeployer(newPoolDeployer))
+        .to.emit(factory, 'PoolDeployer')
+        .withArgs(await newPoolDeployer.getAddress());
+
+      expect(await factory.poolDeployer()).to.eq(await newPoolDeployer.getAddress());
+    });
+
+    it('can only be called once', async () => {
+      const firstPoolDeployer = await deployPoolDeployer();
+      const secondPoolDeployer = await deployPoolDeployer();
+
+      await factory.setPoolDeployer(firstPoolDeployer);
+      await expect(factory.setPoolDeployer(secondPoolDeployer)).to.be.revertedWith('Initializable: contract is already initialized');
+    });
+  });
+
   it('factory bytecode size  [ @skip-on-coverage ]', async () => {
     expect(((await ethers.provider.getCode(factory)).length - 2) / 2).to.matchSnapshot();
   });
@@ -228,7 +263,7 @@ describe('AlgebraFactoryUpgradeable', () => {
     });
 
     it('fails if trying to create via pool deployer directly', async () => {
-      await expect(poolDeployer.deploy(TEST_ADDRESSES[0], TEST_ADDRESSES[0], TEST_ADDRESSES[0])).to.be.reverted;
+      await expect(poolDeployer.deploy(TEST_ADDRESSES[0], TEST_ADDRESSES[0], TEST_ADDRESSES[0], ZeroAddress)).to.be.reverted;
     });
 
     it('fails if token a == token b', async () => {

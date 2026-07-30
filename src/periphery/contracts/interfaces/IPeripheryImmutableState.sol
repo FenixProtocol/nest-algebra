@@ -12,9 +12,6 @@ interface IPeripheryImmutableState {
     /// @return Returns the address of the pool Deployer
     function poolDeployer() external view returns (address);
 
-    /// @return Returns the address of the custom pool Deployer
-    function customPoolDeployer() external view returns (address);
-
     /// @return Returns the address of WNativeToken
     function WNativeToken() external view returns (address);
 }

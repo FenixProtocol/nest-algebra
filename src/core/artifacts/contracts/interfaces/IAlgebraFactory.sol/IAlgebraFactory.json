@@ -39,19 +39,6 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "address",
-          "name": "customPoolDeployerAddress",
-          "type": "address"
-        }
-      ],
-      "name": "CustomPoolDeployer",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
           "internalType": "uint16",
           "name": "newDefaultCommunityFee",
           "type": "uint16"
@@ -122,6 +109,19 @@
         }
       ],
       "name": "Pool",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "poolDeployerAddress",
+          "type": "address"
+        }
+      ],
+      "name": "PoolDeployer",
       "type": "event"
     },
     {
@@ -394,19 +394,6 @@
     },
     {
       "inputs": [],
-      "name": "customPoolDeployer",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "defaultCommunityFee",
       "outputs": [
         {
@@ -652,6 +639,19 @@
         }
       ],
       "name": "setIsPublicPoolCreationMode",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newPoolDeployer",
+          "type": "address"
+        }
+      ],
+      "name": "setPoolDeployer",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

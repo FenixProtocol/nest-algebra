@@ -59,9 +59,9 @@ interface IAlgebraFactory {
   /// @param mode_ The new pools creation mode
   event PublicPoolCreationMode(bool mode_);
 
-  /// @notice Emitted when customPoolDeployer is initialized
-  /// @param customPoolDeployerAddress The custom pool deployer address
-  event CustomPoolDeployer(address customPoolDeployerAddress);
+  /// @notice Emitted when poolDeployer is changed
+  /// @param poolDeployerAddress The pool deployer address
+  event PoolDeployer(address poolDeployerAddress);
 
   /// @notice role that can change communityFee and tickspacing in pools
   /// @return The hash corresponding to this role
@@ -89,10 +89,6 @@ interface IAlgebraFactory {
   /// @notice Returns the current poolDeployerAddress
   /// @return The address of the poolDeployer
   function poolDeployer() external view returns (address);
-
-  /// @notice Returns the custom pool deployer address
-  /// @return The address of the custom pool deployer
-  function customPoolDeployer() external view returns (address);
 
   /// @notice Returns the status of enable public pool creation mode
   /// @return bool Whether the public creation mode is enable or not

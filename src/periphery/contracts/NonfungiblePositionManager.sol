@@ -71,9 +71,6 @@ contract NonfungiblePositionManager is
     /// @dev Pool keys by pool ID, to save on SSTOREs for position data
     mapping(uint80 poolId => PoolAddress.PoolKey poolKey) private _poolIdToPoolKey;
 
-    /// @dev Custom deployer by pool ID, address(0) for classic pools
-    mapping(uint80 poolId => address deployer) private _poolIdToCustomDeployer;
-
     /// @dev The token ID position data
     mapping(uint256 tokenId => Position position) private _positions;
 
@@ -91,11 +88,10 @@ contract NonfungiblePositionManager is
         address _factory,
         address _WNativeToken,
         address _tokenDescriptor_,
-        address _poolDeployer,
-        address _customPoolDeployer
+        address _poolDeployer
     )
         ERC721Permit('Nest Positions NFT-V2', 'NEST-POS', '2')
-        PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer, _customPoolDeployer)
+        PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer)
     {
         _tokenDescriptor = _tokenDescriptor_;
     }
@@ -112,6 +108,7 @@ contract NonfungiblePositionManager is
             address operator,
             address token0,
             address token1,
+            address deployer,
             int24 tickLower,
             int24 tickUpper,
             uint128 liquidity,
@@ -134,51 +131,7 @@ contract NonfungiblePositionManager is
             position.operator,
             poolKey.token0,
             poolKey.token1,
-            tickLower,
-            tickUpper,
-            liquidity,
-            position.feeGrowthInside0LastX128,
-            position.feeGrowthInside1LastX128,
-            position.tokensOwed0,
-            position.tokensOwed1
-        );
-    }
-
-    /// @inheritdoc INonfungiblePositionManager
-    function customPositions(
-        uint256 tokenId
-    )
-        external
-        view
-        override
-        returns (
-            uint88 nonce,
-            address operator,
-            address token0,
-            address token1,
-            address deployer,
-            int24 tickLower,
-            int24 tickUpper,
-            uint128 liquidity,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        )
-    {
-        Position storage position = _positions[tokenId];
-        uint80 poolId = position.poolId;
-        tickLower = position.tickLower;
-        tickUpper = position.tickUpper;
-        liquidity = position.liquidity;
-        require(poolId != 0, 'Invalid token ID');
-        PoolAddress.PoolKey storage poolKey = _poolIdToPoolKey[poolId];
-        return (
-            position.nonce,
-            position.operator,
-            poolKey.token0,
-            poolKey.token1,
-            _poolIdToCustomDeployer[poolId],
+            poolKey.deployer,
             tickLower,
             tickUpper,
             liquidity,
@@ -263,8 +216,7 @@ contract NonfungiblePositionManager is
 
         uint80 poolId = _cachePoolKey(
             address(pool),
-            PoolAddress.getPoolKey(params.deployer, params.token0, params.token1),
-            params.deployer
+            PoolAddress.getPoolKey(params.deployer, params.token0, params.token1)
         );
 
         _positions[tokenId] = Position({
@@ -284,24 +236,18 @@ contract NonfungiblePositionManager is
     }
 
     /// @dev Caches a pool key
-    function _cachePoolKey(
-        address pool,
-        PoolAddress.PoolKey memory poolKey,
-        address deployer
-    ) private returns (uint80 poolId) {
+    function _cachePoolKey(address pool, PoolAddress.PoolKey memory poolKey) private returns (uint80 poolId) {
         if ((poolId = _poolIds[pool]) == 0) {
             unchecked {
                 _poolIds[pool] = (poolId = _nextPoolId++);
             }
             _poolIdToPoolKey[poolId] = poolKey;
-            _poolIdToCustomDeployer[poolId] = deployer;
         }
     }
 
     function _getPoolById(uint80 poolId) private view returns (address) {
         PoolAddress.PoolKey storage poolKey = _poolIdToPoolKey[poolId];
-        address deployer = _poolIdToCustomDeployer[poolId];
-        return PoolAddress.computeAddress(poolDeployer, customPoolDeployer, PoolAddress.getPoolKey(deployer, poolKey.token0, poolKey.token1));
+        return PoolAddress.getPool(factory, poolKey);
     }
 
     function _updateUncollectedFees(
@@ -361,7 +307,7 @@ contract NonfungiblePositionManager is
             AddLiquidityParams({
                 token0: poolKey.token0,
                 token1: poolKey.token1,
-                deployer: _poolIdToCustomDeployer[position.poolId],
+                deployer: poolKey.deployer,
                 tickLower: tickLower,
                 tickUpper: tickUpper,
                 amount0Desired: params.amount0Desired,

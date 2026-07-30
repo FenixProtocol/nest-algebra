@@ -61,7 +61,7 @@ library PositionValue {
         uint256 tokenId,
         uint160 sqrtRatioX96
     ) internal view returns (uint256 amount0, uint256 amount1) {
-        (, , , , , int24 tickLower, int24 tickUpper, uint128 liquidity, , , , ) = positionManager.customPositions(tokenId);
+        (, , , , , int24 tickLower, int24 tickUpper, uint128 liquidity, , , , ) = positionManager.positions(tokenId);
 
         return _principal(sqrtRatioX96, tickLower, tickUpper, liquidity);
     }
@@ -99,20 +99,9 @@ library PositionValue {
     ) private view returns (uint256 amount0, uint256 amount1) {
         unchecked {
             (uint256 poolFeeGrowthInside0LastX128, uint256 poolFeeGrowthInside1LastX128) = _getFeeGrowthInside(
-                position.deployer == address(0)
-                    ? IAlgebraPool(
-                        PoolAddress.computeAddress(
-                            positionManager.poolDeployer(),
-                            PoolAddress.getPoolKey(position.token0, position.token1)
-                        )
-                    )
-                    : IAlgebraPool(
-                        PoolAddress.computeAddress(
-                            positionManager.poolDeployer(),
-                            positionManager.customPoolDeployer(),
-                            PoolAddress.getPoolKey(position.deployer, position.token0, position.token1)
-                        )
-                    ),
+                IAlgebraPool(
+                    PoolAddress.getPool(positionManager.factory(), PoolAddress.getPoolKey(position.deployer, position.token0, position.token1))
+                ),
                 position.tickLower,
                 position.tickUpper
             );
@@ -152,7 +141,7 @@ library PositionValue {
             uint256 feeGrowthInside1LastX128,
             uint128 tokensOwed0,
             uint128 tokensOwed1
-        ) = positionManager.customPositions(tokenId);
+        ) = positionManager.positions(tokenId);
 
         return
             PositionCache(

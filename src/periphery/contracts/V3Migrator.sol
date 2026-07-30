@@ -32,9 +32,8 @@ contract V3Migrator is
         address _factory,
         address _WNativeToken,
         address _nonfungiblePositionManager,
-        address _poolDeployer,
-        address _customPoolDeployer
-    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer, _customPoolDeployer) {
+        address _poolDeployer
+    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {
         nonfungiblePositionManager = _nonfungiblePositionManager;
     }
 
