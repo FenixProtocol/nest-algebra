@@ -145,6 +145,7 @@ describe('NonfungiblePositionManager', () => {
         nft.mint({
           token0: tokens[0],
           token1: tokens[1],
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           amount0Desired: 100,
@@ -164,6 +165,7 @@ describe('NonfungiblePositionManager', () => {
         nft.mint({
           token0: tokens[0],
           token1: tokens[1],
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           amount0Desired: 100,
@@ -183,6 +185,7 @@ describe('NonfungiblePositionManager', () => {
         nft.mint({
           token0: tokens[0],
           token1: tokens[1],
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           amount0Desired: 100,
@@ -204,6 +207,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -253,6 +257,7 @@ describe('NonfungiblePositionManager', () => {
         {
           token0: await token0.getAddress(),
           token1: await token1.getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           recipient: other.address,
@@ -291,6 +296,7 @@ describe('NonfungiblePositionManager', () => {
         nft.mint({
           token0: tokens[0].getAddress(),
           token1: tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           recipient: wallet.address,
@@ -314,6 +320,7 @@ describe('NonfungiblePositionManager', () => {
               {
                 token0: await token0.getAddress(),
                 token1: await token1.getAddress(),
+                deployer: ZeroAddress,
                 tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
                 tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
                 recipient: wallet.address,
@@ -342,6 +349,7 @@ describe('NonfungiblePositionManager', () => {
               {
                 token0: await token0.getAddress(),
                 token1: await token1.getAddress(),
+                deployer: ZeroAddress,
                 tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
                 tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
                 recipient: wallet.address,
@@ -365,6 +373,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -379,6 +388,7 @@ describe('NonfungiblePositionManager', () => {
         nft.mint({
           token0: await tokens[0].getAddress(),
           token1: await tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           recipient: wallet.address,
@@ -401,6 +411,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -415,6 +426,7 @@ describe('NonfungiblePositionManager', () => {
         nft.mint({
           token0: tokens[0].getAddress(),
           token1: tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]) + TICK_SPACINGS[FeeAmount.MEDIUM],
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]) - TICK_SPACINGS[FeeAmount.MEDIUM],
           recipient: wallet.address,
@@ -440,6 +452,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -510,6 +523,7 @@ describe('NonfungiblePositionManager', () => {
         {
           token0: await token0.getAddress(),
           token1: await token1.getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           recipient: other.address,
@@ -562,6 +576,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -644,6 +659,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -683,6 +699,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -829,6 +846,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -908,6 +926,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -962,6 +981,7 @@ describe('NonfungiblePositionManager', () => {
         await nft.mint({
           token0: tokens[0].getAddress(),
           token1: tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           recipient: other.getAddress(),
@@ -1025,6 +1045,7 @@ describe('NonfungiblePositionManager', () => {
         await nft.mint({
           token0: tokens[0].getAddress(),
           token1: tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           recipient: testPositionNFTOwner.getAddress(),
@@ -1083,6 +1104,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -1170,6 +1192,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),
@@ -1208,6 +1231,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         amount0Desired: 100,
@@ -1221,6 +1245,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
 
@@ -1309,6 +1334,7 @@ describe('NonfungiblePositionManager', () => {
       await nft.mint({
         token0: tokens[0].getAddress(),
         token1: tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: other.getAddress(),

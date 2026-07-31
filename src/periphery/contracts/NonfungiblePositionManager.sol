@@ -152,41 +152,11 @@ contract NonfungiblePositionManager is
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
     {
-        return
-            _mintAlgebraPosition(
-                MintCustomParams({
-                    token0: params.token0,
-                    token1: params.token1,
-                    deployer: address(0),
-                    tickLower: params.tickLower,
-                    tickUpper: params.tickUpper,
-                    amount0Desired: params.amount0Desired,
-                    amount1Desired: params.amount1Desired,
-                    amount0Min: params.amount0Min,
-                    amount1Min: params.amount1Min,
-                    recipient: params.recipient,
-                    deadline: params.deadline
-                })
-            );
-    }
-
-    /// @inheritdoc INonfungiblePositionManager
-    function mintCustom(
-        MintCustomParams calldata params
-    )
-        external
-        payable
-        override
-        checkDeadline(params.deadline)
-        returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
-    {
-        require(params.deployer != address(0), 'Invalid deployer');
-
         return _mintAlgebraPosition(params);
     }
 
     function _mintAlgebraPosition(
-        MintCustomParams memory params
+        MintParams memory params
     ) private returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         IAlgebraPool pool;
         uint128 liquidityDesired;

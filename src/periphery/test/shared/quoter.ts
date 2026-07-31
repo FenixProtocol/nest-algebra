@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers';
+import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import {
   abi as MOCK_PLUGIN_FACTORY_ABI,
@@ -23,6 +23,7 @@ export async function createPool(
   const liquidityParams = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     recipient: wallet.address,
@@ -50,6 +51,7 @@ export async function createPoolWithMultiplePositions(
   const liquidityParams = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     recipient: wallet.address,
@@ -65,6 +67,7 @@ export async function createPoolWithMultiplePositions(
   const liquidityParams2 = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: -60,
     tickUpper: 60,
     recipient: wallet.address,
@@ -80,6 +83,7 @@ export async function createPoolWithMultiplePositions(
   const liquidityParams3 = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: -120,
     tickUpper: 120,
     recipient: wallet.address,
@@ -107,6 +111,7 @@ export async function createPoolWithZeroTickInitialized(
   const liquidityParams = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
     recipient: wallet.address,
@@ -122,6 +127,7 @@ export async function createPoolWithZeroTickInitialized(
   const liquidityParams2 = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: 0,
     tickUpper: 60,
     recipient: wallet.address,
@@ -137,6 +143,7 @@ export async function createPoolWithZeroTickInitialized(
   const liquidityParams3 = {
     token0: tokenAddressA,
     token1: tokenAddressB,
+    deployer: ZeroAddress,
     tickLower: -120,
     tickUpper: 0,
     recipient: wallet.address,
@@ -184,6 +191,6 @@ export async function createCustomPool(
     deadline: 1,
   };
 
-  await nft.mintCustom(liquidityParams);
+  await nft.mint(liquidityParams);
   return customDeployer;
 }

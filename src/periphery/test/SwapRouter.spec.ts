@@ -50,6 +50,7 @@ describe('SwapRouter', function () {
     const liquidityParams = {
       token0: tokenAddressA,
       token1: tokenAddressB,
+      deployer: ZeroAddress,
       fee: FeeAmount.MEDIUM,
       tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
       tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
@@ -95,7 +96,7 @@ describe('SwapRouter', function () {
       deadline: 1,
     };
 
-    await _nft.mintCustom(liquidityParams);
+    await _nft.mint(liquidityParams);
     return customDeployer;
   }
 

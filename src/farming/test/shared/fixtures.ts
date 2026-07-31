@@ -1,4 +1,4 @@
-import { Signer, Wallet, getCreateAddress, MaxUint256 } from 'ethers';
+import { Signer, Wallet, getCreateAddress, MaxUint256, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import AlgebraPool from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
 import {
@@ -187,6 +187,7 @@ export const mintPosition = async (
   mintParams: {
     token0: string | TestERC20;
     token1: string | TestERC20;
+    deployer?: string;
     fee: FeeAmount;
     tickLower: number;
     tickUpper: number;
@@ -208,6 +209,7 @@ export const mintPosition = async (
       {
         token0: mintParams.token0,
         token1: mintParams.token1,
+        deployer: mintParams.deployer ?? ZeroAddress,
         tickLower: mintParams.tickLower,
         tickUpper: mintParams.tickUpper,
         recipient: mintParams.recipient,

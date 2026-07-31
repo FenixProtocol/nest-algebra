@@ -102,6 +102,7 @@ interface INonfungiblePositionManager is
     struct MintParams {
         address token0;
         address token1;
+        address deployer;
         int24 tickLower;
         int24 tickUpper;
         uint256 amount0Desired;
@@ -115,6 +116,7 @@ interface INonfungiblePositionManager is
     /// @notice Creates a new position wrapped in a NFT
     /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
     /// a method does not exist, i.e. the pool is assumed to be initialized.
+    /// @dev Use address(0) as deployer for classic pools
     /// @dev If native token is used as input, this function should be accompanied by a `refundNativeToken` in multicall to avoid potential loss of native tokens
     /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
     /// @return tokenId The ID of the token that represents the minted position
@@ -123,30 +125,6 @@ interface INonfungiblePositionManager is
     /// @return amount1 The amount of token1
     function mint(
         MintParams calldata params
-    ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
-
-    struct MintCustomParams {
-        address token0;
-        address token1;
-        address deployer;
-        int24 tickLower;
-        int24 tickUpper;
-        uint256 amount0Desired;
-        uint256 amount1Desired;
-        uint256 amount0Min;
-        uint256 amount1Min;
-        address recipient;
-        uint256 deadline;
-    }
-
-    /// @notice Creates a new position wrapped in a NFT for a custom pool
-    /// @param params The params necessary to mint a custom position
-    /// @return tokenId The ID of the token that represents the minted position
-    /// @return liquidity The liquidity delta amount as a result of the increase
-    /// @return amount0 The amount of token0
-    /// @return amount1 The amount of token1
-    function mintCustom(
-        MintCustomParams calldata params
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     struct IncreaseLiquidityParams {

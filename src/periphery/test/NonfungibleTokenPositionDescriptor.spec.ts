@@ -1,4 +1,4 @@
-import { Wallet, MaxUint256 } from 'ethers';
+import { Wallet, MaxUint256, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { expect } from './shared/expect';
@@ -129,6 +129,7 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       await nft.mint({
         token0: token0,
         token1: token1,
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -153,6 +154,7 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       await nft.mint({
         token0: token0,
         token1: token1,
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,

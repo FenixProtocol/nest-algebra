@@ -1,4 +1,4 @@
-import { BigNumberish, Contract, Wallet, MaxUint256 } from 'ethers';
+import { BigNumberish, Contract, Wallet, MaxUint256, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import { MockTimeNonfungiblePositionManager, TestERC20, TickLensTest } from '../typechain';
@@ -53,6 +53,7 @@ describe('TickLens', () => {
     const mintParams = {
       token0: tokens[0].address,
       token1: tokens[1].address,
+      deployer: ZeroAddress,
       tickLower,
       tickUpper,
       amount0Desired: amountBothDesired,
@@ -82,6 +83,7 @@ describe('TickLens', () => {
     const liquidityParams = {
       token0: tokenAddressA,
       token1: tokenAddressB,
+      deployer: ZeroAddress,
       tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
       tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
       recipient: wallets[0].address,
