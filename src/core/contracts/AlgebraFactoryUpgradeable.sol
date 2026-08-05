@@ -60,6 +60,9 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
   /// @inheritdoc IAlgebraFactory
   mapping(address => mapping(address => mapping(address => address))) public override customPoolByPair;
 
+  /// @inheritdoc IAlgebraFactory
+  mapping(address => address) public override deployerByPool;
+
   /// @dev time delay before ownership renouncement can be finished
   uint256 private constant RENOUNCE_OWNERSHIP_DELAY = 1 days;
 
@@ -181,6 +184,7 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
 
     customPoolByPair[customDeployer][token0][token1] = customPool;
     customPoolByPair[customDeployer][token1][token0] = customPool;
+    deployerByPool[customPool] = customDeployer;
     emit CustomPool(customDeployer, token0, token1, customPool);
 
     if (address(vaultFactory) != address(0)) {

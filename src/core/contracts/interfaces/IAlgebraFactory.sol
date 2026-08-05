@@ -154,6 +154,11 @@ interface IAlgebraFactory {
   /// @return customPool The custom pool address
   function customPoolByPair(address customDeployer, address tokenA, address tokenB) external view returns (address customPool);
 
+  /// @notice Returns the custom deployer for a pool, or address 0 for classic pools and unknown pools
+  /// @param pool The pool address
+  /// @return deployer The custom pool deployer address
+  function deployerByPool(address pool) external view returns (address deployer);
+
   /// @notice returns keccak256 of AlgebraPool init bytecode.
   /// @dev the hash value changes with any change in the pool bytecode
   /// @return Keccak256 hash of AlgebraPool contract init bytecode
