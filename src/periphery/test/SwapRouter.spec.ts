@@ -14,6 +14,7 @@ import { expect } from './shared/expect';
 import { encodePath, encodeRoutePath } from './shared/path';
 import { getMaxTick, getMinTick } from './shared/ticks';
 import { computePoolAddress } from './shared/computePoolAddress';
+import poolAtAddress from './shared/poolAtAddress';
 
 type TestERC20WithAddress = TestERC20 & { address: string };
 
@@ -80,7 +81,8 @@ describe('SwapRouter', function () {
 
     const customDeployer = await pluginFactory.getAddress();
     await pluginFactory.createCustomPool(await entryPoint.getAddress(), _wallet.address, tokenAddressA, tokenAddressB, '0x');
-    await _nft.initializeCustomPoolIfNecessary(customDeployer, tokenAddressA, tokenAddressB, encodePriceSqrt(1, 1));
+    const poolAddress = await factory.customPoolByPair(customDeployer, tokenAddressA, tokenAddressB);
+    await poolAtAddress(poolAddress, _wallet).initialize(encodePriceSqrt(1, 1));
 
     const liquidityParams = {
       token0: tokenAddressA,

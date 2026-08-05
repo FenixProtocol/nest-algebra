@@ -8,6 +8,7 @@ import { IAlgebraFactory, MockTimeNonfungiblePositionManager } from '../../typec
 import { FeeAmount, TICK_SPACINGS } from './constants';
 import { encodePriceSqrt } from './encodePriceSqrt';
 import { getMaxTick, getMinTick } from './ticks';
+import poolAtAddress from './poolAtAddress';
 
 export async function createPool(
   nft: MockTimeNonfungiblePositionManager,
@@ -175,7 +176,8 @@ export async function createCustomPool(
 
   const customDeployer = await pluginFactory.getAddress();
   await pluginFactory.createCustomPool(await entryPoint.getAddress(), wallet.address, tokenAddressA, tokenAddressB, '0x');
-  await nft.initializeCustomPoolIfNecessary(customDeployer, tokenAddressA, tokenAddressB, encodePriceSqrt(1, 1));
+  const poolAddress = await factory.customPoolByPair(customDeployer, tokenAddressA, tokenAddressB);
+  await poolAtAddress(poolAddress, wallet).initialize(encodePriceSqrt(1, 1));
 
   const liquidityParams = {
     token0: tokenAddressA,

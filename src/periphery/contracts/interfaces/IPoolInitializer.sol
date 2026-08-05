@@ -20,16 +20,4 @@ interface IPoolInitializer {
         uint160 sqrtPriceX96
     ) external payable returns (address pool);
 
-    /// @notice Initializes a custom pool if it already exists and is not initialized
-    /// @param deployer The custom pool deployer identifier
-    /// @param token0 The contract address of token0 of the pool
-    /// @param token1 The contract address of token1 of the pool
-    /// @param sqrtPriceX96 The initial square root price of the pool as a Q64.96 value
-    /// @return pool Returns the custom pool address
-    function initializeCustomPoolIfNecessary(
-        address deployer,
-        address token0,
-        address token1,
-        uint160 sqrtPriceX96
-    ) external payable returns (address pool);
 }
