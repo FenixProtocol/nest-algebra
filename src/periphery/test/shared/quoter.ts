@@ -175,7 +175,14 @@ export async function createCustomPool(
   await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), await entryPoint.getAddress());
 
   const customDeployer = await pluginFactory.getAddress();
-  await pluginFactory.createCustomPool(await entryPoint.getAddress(), wallet.address, tokenAddressA, tokenAddressB, '0x');
+  await entryPoint.setCustomPoolDeployer(customDeployer, true);
+  await pluginFactory.createCustomPool(
+    await entryPoint.getAddress(),
+    wallet.address,
+    tokenAddressA,
+    tokenAddressB,
+    '0x'
+  );
   const poolAddress = await factory.customPoolByPair(customDeployer, tokenAddressA, tokenAddressB);
   await poolAtAddress(poolAddress, wallet).initialize(encodePriceSqrt(1, 1));
 

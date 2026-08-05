@@ -76,11 +76,20 @@ describe('SwapRouter', function () {
       [tokenAddressA, tokenAddressB] = [tokenAddressB, tokenAddressA];
 
     const entryPoint = await (await ethers.getContractFactory('AlgebraCustomPoolEntryPoint')).deploy(factory);
-    const pluginFactory = await (await ethers.getContractFactory(MOCK_PLUGIN_FACTORY_ABI, MOCK_PLUGIN_FACTORY_BYTECODE)).deploy();
+    const pluginFactory = await (
+      await ethers.getContractFactory(MOCK_PLUGIN_FACTORY_ABI, MOCK_PLUGIN_FACTORY_BYTECODE)
+    ).deploy();
     await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), await entryPoint.getAddress());
 
     const customDeployer = await pluginFactory.getAddress();
-    await pluginFactory.createCustomPool(await entryPoint.getAddress(), _wallet.address, tokenAddressA, tokenAddressB, '0x');
+    await entryPoint.setCustomPoolDeployer(customDeployer, true);
+    await pluginFactory.createCustomPool(
+      await entryPoint.getAddress(),
+      _wallet.address,
+      tokenAddressA,
+      tokenAddressB,
+      '0x'
+    );
     const poolAddress = await factory.customPoolByPair(customDeployer, tokenAddressA, tokenAddressB);
     await poolAtAddress(poolAddress, _wallet).initialize(encodePriceSqrt(1, 1));
 

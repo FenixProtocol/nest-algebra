@@ -5,9 +5,27 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginF
 
 /// @title An interface for a contract that deploys and manages Algebra custom pools
 interface IAlgebraCustomPoolEntryPoint is IAlgebraPluginFactory {
+    /// @notice Emitted when public custom pool creation mode is changed
+    /// @param mode The new public custom pool creation mode
+    event PublicPoolCreationMode(bool mode);
+
+    /// @notice Emitted when a custom pool deployer whitelist status is changed
+    /// @param deployer The custom pool deployer address
+    /// @param allowed Whether the deployer is whitelisted
+    event CustomPoolDeployer(address indexed deployer, bool allowed);
+
     /// @notice Returns the address of the corresponding AlgebraFactory contract
     /// @return factory The address of AlgebraFactory
     function factory() external view returns (address factory);
+
+    /// @notice Returns the status of public custom pool creation mode
+    /// @return bool Whether custom pool creation is public
+    function isPublicPoolCreationMode() external view returns (bool);
+
+    /// @notice Returns whether a deployer can create custom pools in private mode
+    /// @param deployer The custom pool deployer address
+    /// @return bool Whether the deployer is whitelisted
+    function isCustomPoolDeployer(address deployer) external view returns (bool);
 
     /// @notice Creates a custom pool
     /// @param deployer The plugin deployer, also used for custom pool address calculation
@@ -35,4 +53,18 @@ interface IAlgebraCustomPoolEntryPoint is IAlgebraPluginFactory {
 
     /// @notice Changes the fee value in a custom pool
     function setFee(address pool, uint16 newFee) external;
+
+    /// @notice Changes public custom pool creation mode
+    /// @param mode The new public custom pool creation mode
+    function setPublicPoolCreationMode(bool mode) external;
+
+    /// @notice Changes a custom pool deployer whitelist status
+    /// @param deployer The custom pool deployer address
+    /// @param allowed Whether the deployer should be whitelisted
+    function setCustomPoolDeployer(address deployer, bool allowed) external;
+
+    /// @notice Changes whitelist status for a batch of custom pool deployers
+    /// @param deployers The custom pool deployer addresses
+    /// @param allowed Whether the deployers should be whitelisted
+    function setCustomPoolDeployerBatch(address[] calldata deployers, bool allowed) external;
 }

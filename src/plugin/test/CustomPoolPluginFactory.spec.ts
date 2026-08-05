@@ -65,7 +65,7 @@ describe('CustomPoolPluginFactory', () => {
     const poolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
 
     const entryPointFactory = await ethers.getContractFactory(ENTRY_POINT_ABI, ENTRY_POINT_BYTECODE);
-    const entryPoint = await entryPointFactory.deploy(factory);
+    const entryPoint = (await entryPointFactory.deploy(factory)) as any;
 
     await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), entryPoint);
     await factory.grantRole(await factory.POOLS_ADMINISTRATOR_ROLE(), entryPoint);
@@ -75,6 +75,7 @@ describe('CustomPoolPluginFactory', () => {
 
     const customFactory = await createEmptyCustomPoolPluginFactoryProxy();
     await customFactory.initialize(factory, entryPoint, pluginImplementation);
+    await entryPoint.setCustomPoolDeployer(await customFactory.getAddress(), true);
 
     return { factory, poolDeployer, entryPoint, pluginImplementation, customFactory };
   }
@@ -90,7 +91,7 @@ describe('CustomPoolPluginFactory', () => {
   it('fail if try initialize on implementation', async () => {
     const factory = await createEmptyFactoryProxy();
     const entryPointFactory = await ethers.getContractFactory(ENTRY_POINT_ABI, ENTRY_POINT_BYTECODE);
-    const entryPoint = await entryPointFactory.deploy(factory);
+    const entryPoint = (await entryPointFactory.deploy(factory)) as any;
     const pluginImplementation = await (await ethers.getContractFactory('AlgebraBasePluginV1')).deploy();
     const customFactoryImplementation = await (await ethers.getContractFactory('CustomPoolPluginFactory')).deploy();
 

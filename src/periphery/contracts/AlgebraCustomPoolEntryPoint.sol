@@ -2,17 +2,22 @@
 pragma solidity =0.8.20;
 
 import {IAlgebraCustomPoolEntryPoint} from './interfaces/IAlgebraCustomPoolEntryPoint.sol';
-import {
-    IAlgebraPluginFactory
-} from '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
+import {IAlgebraPluginFactory} from '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginFactory.sol';
 import {IAlgebraPool} from '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import {IAlgebraFactory} from '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+import {Ownable2Step} from '@openzeppelin/contracts/access/Ownable2Step.sol';
 
 /// @title Algebra custom pool entry point
 /// @notice Is used to create and manage custom pools
-contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint {
+contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint, Ownable2Step {
     /// @inheritdoc IAlgebraCustomPoolEntryPoint
     address public immutable override factory;
+
+    /// @inheritdoc IAlgebraCustomPoolEntryPoint
+    bool public override isPublicPoolCreationMode;
+
+    /// @inheritdoc IAlgebraCustomPoolEntryPoint
+    mapping(address => bool) public override isCustomPoolDeployer;
 
     modifier onlyCustomDeployer(address pool) {
         _checkIfDeployer(pool);
@@ -33,7 +38,29 @@ contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint {
         bytes calldata data
     ) external override returns (address customPool) {
         require(msg.sender == deployer, 'Only deployer');
+        if (!isPublicPoolCreationMode) {
+            require(isCustomPoolDeployer[deployer], 'Can`t create custom pools');
+        }
         return IAlgebraFactory(factory).createCustomPool(deployer, creator, tokenA, tokenB, data);
+    }
+
+    /// @inheritdoc IAlgebraCustomPoolEntryPoint
+    function setPublicPoolCreationMode(bool mode) external override onlyOwner {
+        isPublicPoolCreationMode = mode;
+        emit PublicPoolCreationMode(mode);
+    }
+
+    /// @inheritdoc IAlgebraCustomPoolEntryPoint
+    function setCustomPoolDeployer(address deployer, bool allowed) external override onlyOwner {
+        _setCustomPoolDeployer(deployer, allowed);
+    }
+
+    /// @inheritdoc IAlgebraCustomPoolEntryPoint
+    function setCustomPoolDeployerBatch(address[] calldata deployers, bool allowed) external override onlyOwner {
+        uint256 deployersLength = deployers.length;
+        for (uint256 i; i < deployersLength; ++i) {
+            _setCustomPoolDeployer(deployers[i], allowed);
+        }
     }
 
     /// @inheritdoc IAlgebraPluginFactory
@@ -88,5 +115,13 @@ contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint {
         address token0 = IAlgebraPool(pool).token0();
         address token1 = IAlgebraPool(pool).token1();
         require(pool == IAlgebraFactory(factory).customPoolByPair(msg.sender, token0, token1), 'Only deployer');
+    }
+
+    function _setCustomPoolDeployer(address deployer, bool allowed) internal {
+        require(deployer != address(0));
+        if (isCustomPoolDeployer[deployer] != allowed) {
+            isCustomPoolDeployer[deployer] = allowed;
+            emit CustomPoolDeployer(deployer, allowed);
+        }
     }
 }
