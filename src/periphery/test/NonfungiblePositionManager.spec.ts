@@ -16,13 +16,14 @@ import { FeeAmount, MaxUint128, TICK_SPACINGS } from './shared/constants';
 import { encodePriceSqrt } from './shared/encodePriceSqrt';
 import { expect } from './shared/expect';
 import getPermitNFTSignature from './shared/getPermitNFTSignature';
-import { encodePath } from './shared/path';
+import { encodePath, encodeRoutePath } from './shared/path';
 import poolAtAddress from './shared/poolAtAddress';
 import snapshotGasCost from './shared/snapshotGasCost';
 import { getMaxTick, getMinTick } from './shared/ticks';
 import { expandTo18Decimals } from './shared/expandTo18Decimals';
 import { sortedTokens } from './shared/tokenSort';
 import { extractJSONFromURI } from './shared/extractJSONFromURI';
+import { createInitializedCustomPool } from './shared/customPool';
 
 import { abi as IAlgebraPoolABI } from '@cryptoalgebra/integral-core/artifacts/contracts/interfaces/IAlgebraPool.sol/IAlgebraPool.json';
 
@@ -905,6 +906,218 @@ describe('NonfungiblePositionManager', () => {
         amount1Max: MaxUint128,
       });
       await snapshotGasCost(nft.connect(other).burn(tokenId));
+    });
+  });
+
+  describe('custom pool positions', () => {
+    const tokenId = 1;
+    let customDeployer: string;
+    let customPool: string;
+    let classicPool: string;
+    let token0: string;
+    let token1: string;
+
+    async function poolBalances(pool: string) {
+      return {
+        token0: await tokens[0].balanceOf(pool),
+        token1: await tokens[1].balanceOf(pool),
+      };
+    }
+
+    beforeEach('create classic and custom pools for the same pair', async () => {
+      token0 = await tokens[0].getAddress();
+      token1 = await tokens[1].getAddress();
+
+      await nft.createAndInitializePoolIfNecessary(token0, token1, encodePriceSqrt(1, 1));
+      classicPool = await factory.poolByPair(token0, token1);
+
+      ({ customDeployer, poolAddress: customPool } = await createInitializedCustomPool({
+        nft,
+        factory,
+        wallet,
+        tokenAddressA: token0,
+        tokenAddressB: token1,
+        liquidityAmount: 100,
+      }));
+    });
+
+    it('stores deployer and keeps classic/custom same-pair mints isolated', async () => {
+      const customPosition = await nft.positions(tokenId);
+      expect(customPosition.token0).to.eq(token0);
+      expect(customPosition.token1).to.eq(token1);
+      expect(customPosition.deployer).to.eq(customDeployer);
+      expect(customPosition.liquidity).to.eq(100);
+
+      await nft.mint({
+        token0,
+        token1,
+        deployer: ZeroAddress,
+        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+        recipient: other.getAddress(),
+        amount0Desired: 100,
+        amount1Desired: 100,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: 1,
+      });
+
+      const classicPosition = await nft.positions(2);
+      expect(classicPosition.deployer).to.eq(ZeroAddress);
+      expect(await poolBalances(customPool)).to.deep.eq({ token0: 100n, token1: 100n });
+      expect(await poolBalances(classicPool)).to.deep.eq({ token0: 100n, token1: 100n });
+    });
+
+    it('increases custom liquidity without touching the classic pool', async () => {
+      const classicBefore = await poolBalances(classicPool);
+      const customBefore = await poolBalances(customPool);
+
+      await expect(
+        nft.increaseLiquidity({
+          tokenId,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        })
+      )
+        .to.emit(nft, 'IncreaseLiquidity')
+        .withArgs(tokenId, 100, 100, 100, 100, customPool);
+
+      const { liquidity } = await nft.positions(tokenId);
+      expect(liquidity).to.eq(200);
+      expect(await poolBalances(customPool)).to.deep.eq({
+        token0: customBefore.token0 + 100n,
+        token1: customBefore.token1 + 100n,
+      });
+      expect(await poolBalances(classicPool)).to.deep.eq(classicBefore);
+    });
+
+    it('decreases and collects from the custom pool', async () => {
+      await nft.decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 });
+      const { liquidity, tokensOwed0, tokensOwed1 } = await nft.positions(tokenId);
+      expect(liquidity).to.eq(50);
+      expect(tokensOwed0).to.eq(49);
+      expect(tokensOwed1).to.eq(49);
+
+      await expect(
+        nft.collect({
+          tokenId,
+          recipient: wallet.address,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        })
+      )
+        .to.emit(tokens[0], 'Transfer')
+        .withArgs(customPool, wallet.address, 49)
+        .to.emit(tokens[1], 'Transfer')
+        .withArgs(customPool, wallet.address, 49);
+    });
+
+    it('collects custom pool tokens to the position manager when recipient is zero', async () => {
+      await nft.decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 });
+
+      await expect(
+        nft.collect({
+          tokenId,
+          recipient: ZeroAddress,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        })
+      )
+        .to.emit(tokens[0], 'Transfer')
+        .withArgs(customPool, await nft.getAddress(), 49)
+        .to.emit(tokens[1], 'Transfer')
+        .withArgs(customPool, await nft.getAddress(), 49);
+    });
+
+    it('burns after a full custom position exit', async () => {
+      await nft.decreaseLiquidity({ tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 });
+      await nft.collect({
+        tokenId,
+        recipient: wallet.address,
+        amount0Max: MaxUint128,
+        amount1Max: MaxUint128,
+      });
+      await nft.burn(tokenId);
+
+      await expect(nft.positions(tokenId)).to.be.revertedWith('Invalid token ID');
+    });
+
+    it('executes custom position exit through multicall', async () => {
+      const decreaseLiquidityData = nft.interface.encodeFunctionData('decreaseLiquidity', [
+        { tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 },
+      ]);
+      const collectData = nft.interface.encodeFunctionData('collect', [
+        {
+          tokenId,
+          recipient: wallet.address,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        },
+      ]);
+      const burnData = nft.interface.encodeFunctionData('burn', [tokenId]);
+      const pool = poolAtAddress(customPool, wallet);
+
+      await expect(nft.multicall([decreaseLiquidityData, collectData, burnData]))
+        .to.emit(pool, 'Burn')
+        .to.emit(pool, 'Collect');
+    });
+
+    it('collects custom pool fees after a swap through the custom deployer route', async () => {
+      const swapAmount = 3_333_333;
+      await tokens[0].approve(router.getAddress(), swapAmount);
+
+      await router.exactInput({
+        recipient: wallet.address,
+        deadline: 1,
+        path: encodeRoutePath([token0, token1], [customDeployer]),
+        amountIn: swapAmount,
+        amountOutMinimum: 0,
+      });
+
+      const { amount0, amount1 } = await nft.collect.staticCall({
+        tokenId,
+        recipient: wallet.address,
+        amount0Max: MaxUint128,
+        amount1Max: MaxUint128,
+      });
+      expect(amount0).to.be.gt(0);
+      expect(amount1).to.eq(0);
+
+      await expect(
+        nft.collect({
+          tokenId,
+          recipient: wallet.address,
+          amount0Max: MaxUint128,
+          amount1Max: MaxUint128,
+        })
+      )
+        .to.emit(tokens[0], 'Transfer')
+        .withArgs(customPool, wallet.address, amount0);
+    });
+
+    it('notifies farming follower when custom position liquidity changes', async () => {
+      const mockFollowerFactory = await ethers.getContractFactory('MockPositionFollower');
+      const mockFollower = (await mockFollowerFactory.deploy()) as any as MockPositionFollower;
+
+      await nft.setFarmingCenter(mockFollower);
+      await nft.approveForFarming(tokenId, true, mockFollower);
+      await mockFollower.enterToFarming(nft, tokenId);
+
+      expect(await mockFollower.wasCalled()).to.be.false;
+
+      await nft.increaseLiquidity({
+        tokenId,
+        amount0Desired: 100,
+        amount1Desired: 100,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: 1,
+      });
+
+      expect(await mockFollower.wasCalled()).to.be.true;
     });
   });
 

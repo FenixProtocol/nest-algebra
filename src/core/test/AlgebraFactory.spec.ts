@@ -332,12 +332,76 @@ describe('AlgebraFactoryUpgradeable', () => {
       expect(await factory.customPoolByPair(customDeployer, token1, token0)).to.eq(expectedPool);
       expect(await factory.deployerByPool(expectedPool)).to.eq(customDeployer);
     });
+
+    it('keeps classic and custom pools for the same pair isolated', async () => {
+      const customDeployer = await defaultPluginFactory.getAddress();
+      const [token0, token1] =
+        TEST_ADDRESSES[0].toLowerCase() < TEST_ADDRESSES[1].toLowerCase()
+          ? [TEST_ADDRESSES[0], TEST_ADDRESSES[1]]
+          : [TEST_ADDRESSES[1], TEST_ADDRESSES[0]];
+
+      await factory.grantRole(await factory.POOLS_CREATOR_ROLE(), wallet.address);
+      await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), customDeployer);
+
+      await factory.createPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
+      const classicPool = await factory.poolByPair(token0, token1);
+      const expectedCustomPool = await factory.computeCustomPoolAddress(customDeployer, token0, token1);
+
+      await defaultPluginFactory.createCustomPool(
+        await factory.getAddress(),
+        wallet.address,
+        TEST_ADDRESSES[0],
+        TEST_ADDRESSES[1],
+        '0x'
+      );
+
+      expect(await factory.poolByPair(token0, token1)).to.eq(classicPool);
+      expect(await factory.customPoolByPair(customDeployer, token0, token1)).to.eq(expectedCustomPool);
+      expect(classicPool).to.not.eq(expectedCustomPool);
+      expect(await factory.deployerByPool(classicPool)).to.eq(ZeroAddress);
+      expect(await factory.deployerByPool(expectedCustomPool)).to.eq(customDeployer);
+    });
+
+    it('prevents duplicate custom pools for the same deployer and pair', async () => {
+      const customDeployer = await defaultPluginFactory.getAddress();
+      await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), customDeployer);
+
+      await defaultPluginFactory.createCustomPool(
+        await factory.getAddress(),
+        wallet.address,
+        TEST_ADDRESSES[0],
+        TEST_ADDRESSES[1],
+        '0x'
+      );
+
+      await expect(
+        defaultPluginFactory.createCustomPool(
+          await factory.getAddress(),
+          wallet.address,
+          TEST_ADDRESSES[1],
+          TEST_ADDRESSES[0],
+          '0x'
+        )
+      ).to.be.reverted;
+    });
   });
 
   describe('Pool deployer', () => {
     it('cannot set zero address as factory', async () => {
       const poolDeployerFactory = await ethers.getContractFactory('AlgebraPoolDeployer');
       await expect(poolDeployerFactory.deploy(ZeroAddress)).to.be.reverted;
+    });
+
+    it('computes distinct classic and custom addresses for the same pair', async () => {
+      const [token0, token1] =
+        TEST_ADDRESSES[0].toLowerCase() < TEST_ADDRESSES[1].toLowerCase()
+          ? [TEST_ADDRESSES[0], TEST_ADDRESSES[1]]
+          : [TEST_ADDRESSES[1], TEST_ADDRESSES[0]];
+      const customDeployer = await defaultPluginFactory.getAddress();
+
+      expect(await factory.computePoolAddress(token0, token1)).to.not.eq(
+        await factory.computeCustomPoolAddress(customDeployer, token0, token1)
+      );
     });
   });
 
