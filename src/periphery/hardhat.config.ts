@@ -19,20 +19,6 @@ const LOW_OPTIMIZER_COMPILER_SETTINGS = {
   },
 };
 
-const ZERO_RUNS_OPTIMIZER_COMPILER_SETTINGS = {
-  version: '0.8.20',
-  settings: {
-    evmVersion: 'paris',
-    optimizer: {
-      enabled: true,
-      runs: 0,
-    },
-    metadata: {
-      bytecodeHash: 'none',
-    },
-  },
-};
-
 const LOWEST_OPTIMIZER_COMPILER_SETTINGS = {
   version: '0.8.20',
   settings: {
