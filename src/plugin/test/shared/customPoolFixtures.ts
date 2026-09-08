@@ -9,17 +9,8 @@ import {
   abi as ENTRY_POINT_ABI,
   bytecode as ENTRY_POINT_BYTECODE,
 } from '@cryptoalgebra/integral-periphery/artifacts/contracts/AlgebraCustomPoolEntryPoint.sol/AlgebraCustomPoolEntryPoint.json';
-import {
-  abi as PROXY_ADMIN_ABI,
-  bytecode as PROXY_ADMIN_BYTECODE,
-} from '@cryptoalgebra/integral-core/artifacts/@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol/ProxyAdmin.json';
 import { AlgebraFactoryUpgradeable, AlgebraPoolDeployer } from '@cryptoalgebra/integral-core/typechain';
-import { CustomPoolPluginFactory } from '../../typechain';
 import { createEmptyFactoryProxy } from './externalFixtures';
-
-const transparentUpgradeableProxyArtifact = require('@cryptoalgebra/integral-core/artifacts/@openzeppelin/contracts/proxy/transparent/' +
-  'TransparentUpgradeableProxy.sol/TransparentUpgradeableProxy.json');
-const { abi: TRANSPARENT_PROXY_ABI, bytecode: TRANSPARENT_PROXY_BYTECODE } = transparentUpgradeableProxyArtifact;
 
 export const TEST_ADDRESSES: [string, string, string] = [
   '0x1000000000000000000000000000000000000000',
@@ -29,16 +20,6 @@ export const TEST_ADDRESSES: [string, string, string] = [
 
 export function sortAddresses(tokenA: string, tokenB: string): [string, string] {
   return BigInt(tokenA) < BigInt(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA];
-}
-
-export async function createEmptyCustomPoolPluginFactoryProxy(): Promise<CustomPoolPluginFactory> {
-  const implementationFactory = await ethers.getContractFactory('CustomPoolPluginFactory');
-  const implementation = await implementationFactory.deploy();
-  const proxyAdminFactory = await ethers.getContractFactory(PROXY_ADMIN_ABI, PROXY_ADMIN_BYTECODE);
-  const proxyAdmin = await proxyAdminFactory.deploy();
-  const proxyFactory = await ethers.getContractFactory(TRANSPARENT_PROXY_ABI, TRANSPARENT_PROXY_BYTECODE);
-  const proxy = await proxyFactory.deploy(implementation.target, proxyAdmin.target, '0x');
-  return implementationFactory.attach(proxy.target) as any as CustomPoolPluginFactory;
 }
 
 export async function customPoolEnvironmentFixture(): Promise<{

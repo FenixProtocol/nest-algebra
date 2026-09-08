@@ -211,7 +211,9 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     _setImplementation(newImplementation);
   }
 
-  function _createPlugin(address pool) internal returns (address pluginAddress) {
+  /// @dev Deploys and initializes a plugin for `pool`. Derived factories can override this
+  /// implementation when their plugin uses a different fee configuration interface.
+  function _createPlugin(address pool) internal virtual returns (address pluginAddress) {
     require(pluginByPool[pool] == address(0), 'Already created');
     INestTWAPFeePlugin plugin = INestTWAPFeePlugin(address(new BeaconProxy(address(this), '')));
     plugin.initialize(pool, algebraFactory, address(this));

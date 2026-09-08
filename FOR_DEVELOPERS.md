@@ -148,18 +148,18 @@ Behavior:
 - Management functions can only be called by the deployer that created the custom pool.
 - For management functions to succeed, the entry point must also be allowed as a pool administrator by the Algebra factory.
 
-### Custom pool plugin factory
+### Base V1 plugin factory
 
-New contract: `src/plugin/contracts/CustomPoolPluginFactory.sol`
+New contract: `src/plugin/contracts/BaseV1PluginFactory.sol`
 
 Main functions:
 
 ```solidity
-function initialize(
-  address factory,
+constructor(
+  address algebraFactory,
   address algebraCustomPoolEntryPoint,
   address pluginImplementation
-) external;
+);
 
 function deployCustomPool(address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
 
@@ -338,10 +338,10 @@ Recommended setup:
 2. Call `AlgebraFactoryUpgradeable.setPoolDeployer(newPoolDeployer)` by factory owner. This is a `reinitializer(2)` function and is intended to run once.
 3. Deploy and initialize `AlgebraCustomPoolEntryPoint` with the Algebra factory address.
 4. Deploy the plugin implementation used by custom pool plugins.
-5. Deploy and initialize `CustomPoolPluginFactory` through the intended upgradeable deployment flow:
+5. Deploy `BaseV1PluginFactory` with its constructor dependencies:
 
 ```solidity
-initialize(factory, algebraCustomPoolEntryPoint, pluginImplementation)
+new BaseV1PluginFactory(algebraFactory, algebraCustomPoolEntryPoint, pluginImplementation)
 ```
 
 6. Grant the entry point `CUSTOM_POOL_DEPLOYER` on the Algebra factory:
@@ -350,37 +350,37 @@ initialize(factory, algebraCustomPoolEntryPoint, pluginImplementation)
 AlgebraFactoryUpgradeable.grantRole(CUSTOM_POOL_DEPLOYER, algebraCustomPoolEntryPoint);
 ```
 
-7. Whitelist `CustomPoolPluginFactory` as a custom deployer in the entry point while entry point public mode is disabled:
+7. Whitelist `BaseV1PluginFactory` as a custom deployer in the entry point while entry point public mode is disabled:
 
 ```solidity
-AlgebraCustomPoolEntryPoint.setCustomPoolDeployer(customPoolPluginFactory, true);
+AlgebraCustomPoolEntryPoint.setCustomPoolDeployer(baseV1PluginFactory, true);
 ```
 
 8. Whitelist tokens allowed for custom pool creation:
 
 ```solidity
-CustomPoolPluginFactory.setTokenWhitelist(token, true);
-CustomPoolPluginFactory.setTokenWhitelistBatch(tokens, true);
+BaseV1PluginFactory.setTokenWhitelist(token, true);
+BaseV1PluginFactory.setTokenWhitelistBatch(tokens, true);
 ```
 
 9. Create a custom pool:
 
 ```solidity
-CustomPoolPluginFactory.deployCustomPool(tokenA, tokenB, data);
+BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data);
 ```
 
 The custom pool creation call flow is:
 
 ```text
 caller
-  -> CustomPoolPluginFactory.deployCustomPool(tokenA, tokenB, data)
-  -> AlgebraCustomPoolEntryPoint.createCustomPool(address(CustomPoolPluginFactory), caller, tokenA, tokenB, data)
+  -> BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data)
+  -> AlgebraCustomPoolEntryPoint.createCustomPool(address(BaseV1PluginFactory), caller, tokenA, tokenB, data)
   -> AlgebraFactoryUpgradeable.createCustomPool(...)
   -> AlgebraCustomPoolEntryPoint.beforeCreatePoolHook(...)
-  -> CustomPoolPluginFactory.beforeCreatePoolHook(...)
+  -> BaseV1PluginFactory.beforeCreatePoolHook(...)
   -> AlgebraPoolDeployer.deploy(plugin, token0, token1, customDeployer)
   -> AlgebraCustomPoolEntryPoint.afterCreatePoolHook(...)
-  -> CustomPoolPluginFactory.afterCreatePoolHook(...)
+  -> BaseV1PluginFactory.afterCreatePoolHook(...)
 ```
 
 ### Turning public custom pool creation on and off
@@ -388,14 +388,14 @@ caller
 There are two public-mode switches:
 
 ```solidity
-CustomPoolPluginFactory.setPublicPoolCreationMode(bool mode);
+BaseV1PluginFactory.setPublicPoolCreationMode(bool mode);
 AlgebraCustomPoolEntryPoint.setPublicPoolCreationMode(bool mode);
 ```
 
-For normal public custom pool creation through `CustomPoolPluginFactory`, enable public mode on `CustomPoolPluginFactory`:
+For normal public custom pool creation through `BaseV1PluginFactory`, enable public mode on `BaseV1PluginFactory`:
 
 ```solidity
-CustomPoolPluginFactory.setPublicPoolCreationMode(true);
+BaseV1PluginFactory.setPublicPoolCreationMode(true);
 ```
 
 This allows any caller to call `deployCustomPool`, but token whitelist checks still apply.
@@ -403,10 +403,10 @@ This allows any caller to call `deployCustomPool`, but token whitelist checks st
 To disable it:
 
 ```solidity
-CustomPoolPluginFactory.setPublicPoolCreationMode(false);
+BaseV1PluginFactory.setPublicPoolCreationMode(false);
 ```
 
-When disabled, callers need `CUSTOM_POOL_DEPLOYER` on `CustomPoolPluginFactory`.
+When disabled, callers need `CUSTOM_POOL_DEPLOYER` on `BaseV1PluginFactory`.
 
 The entry point public mode is broader. If enabled, any deployer contract can call the entry point directly as long as `msg.sender == deployer`. Keep entry point public mode disabled unless direct custom deployer integrations are intentionally supported.
 
@@ -469,13 +469,13 @@ ISwapRouter.ExactInputSingleParams({
 });
 ```
 
-For custom pools, set `deployer` to the custom deployer used to create the pool, usually `CustomPoolPluginFactory`:
+For custom pools, set `deployer` to the custom deployer used to create the pool, usually `BaseV1PluginFactory`:
 
 ```solidity
 ISwapRouter.ExactInputSingleParams({
   tokenIn: tokenA,
   tokenOut: tokenB,
-  deployer: customPoolPluginFactory,
+  deployer: baseV1PluginFactory,
   recipient: recipient,
   deadline: deadline,
   amountIn: amountIn,
@@ -539,7 +539,7 @@ function encodeRoutePath(tokens: string[], deployers: string[]): string {
 
 const classicThenCustom = encodeRoutePath(
   [tokenA, tokenB, tokenC],
-  [ZeroAddress, customPoolPluginFactory]
+  [ZeroAddress, baseV1PluginFactory]
 );
 ```
 

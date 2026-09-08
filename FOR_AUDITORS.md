@@ -16,7 +16,7 @@ Main changed contracts:
 - `src/core/contracts/AlgebraFactoryUpgradeable.sol`
 - `src/core/contracts/AlgebraPoolDeployer.sol`
 - `src/periphery/contracts/AlgebraCustomPoolEntryPoint.sol`
-- `src/plugin/contracts/CustomPoolPluginFactory.sol`
+- `src/plugin/contracts/BaseV1PluginFactory.sol`
 
 Periphery contracts were updated for backward compatibility with classic pools and support for custom pools:
 
@@ -34,29 +34,29 @@ The farming contracts under `src/farming` and `src/periphery/contracts/V3Migrato
 1. Team deploys the new `AlgebraPoolDeployer` contract.
 2. Team deploys new version of `AlgebraFactoryUpgradeable`, upgrade current proxy and call `setPoolDeployer` with new address of pool deployer contract.
 3. Team deploys and initializes `AlgebraCustomPoolEntryPoint`.
-4. Team deploys and initializes `CustomPoolPluginFactory` with the Algebra factory, custom pool entry point, and plugin implementation.
+4. Team deploys `BaseV1PluginFactory` with the Algebra factory, custom pool entry point, and plugin implementation constructor arguments.
 5. Team grants the required permissions:
    - Algebra factory must allow the entry point to create custom pools through the `CUSTOM_POOL_DEPLOYER` role.
-   - Algebra custom pool entry point must allow `CustomPoolPluginFactory` as a custom pool deployer while private mode is enabled.
+   - Algebra custom pool entry point must allow `BaseV1PluginFactory` as a custom pool deployer while private mode is enabled.
    - Algebra custom pool entry point must be allowed to manage pool parameters where needed through the factory pool administrator permissions through the `POOLS_ADMINISTRATOR` role.
-6. Team configures the token whitelist in `CustomPoolPluginFactory`.
-7. An account authorized by role, or any account after public mode is enabled in `CustomPoolPluginFactory`, calls `CustomPoolPluginFactory.deployCustomPool(tokenA, tokenB, data)`.
-8. `CustomPoolPluginFactory` validates permissions, whitelist status, sorted tokens, expected pool address, and pending pool state.
-9. `CustomPoolPluginFactory` calls `AlgebraCustomPoolEntryPoint.createCustomPool(...)`.
+6. Team configures the token whitelist in `BaseV1PluginFactory`.
+7. An account authorized by role, or any account after public mode is enabled in `BaseV1PluginFactory`, calls `BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data)`.
+8. `BaseV1PluginFactory` validates permissions, whitelist status, sorted tokens, expected pool address, and pending pool state.
+9. `BaseV1PluginFactory` calls `AlgebraCustomPoolEntryPoint.createCustomPool(...)`.
 10. The entry point calls `AlgebraFactoryUpgradeable.createCustomPool(...)`.
-11. The factory calls `beforeCreatePoolHook` on the entry point, which forwards the hook to `CustomPoolPluginFactory`.
-12. `CustomPoolPluginFactory.beforeCreatePoolHook` validates pending pool data and deploys a plugin for the expected custom pool address.
+11. The factory calls `beforeCreatePoolHook` on the entry point, which forwards the hook to `BaseV1PluginFactory`.
+12. `BaseV1PluginFactory.beforeCreatePoolHook` validates pending pool data and deploys a plugin for the expected custom pool address.
 13. The factory deploys the custom pool through `AlgebraPoolDeployer` using a CREATE2 salt that includes the custom deployer address and token pair.
-14. The factory calls `afterCreatePoolHook` on the entry point, which forwards the hook to `CustomPoolPluginFactory`.
-15. `CustomPoolPluginFactory.afterCreatePoolHook` validates the created plugin and marks the pool as a known custom pool.
+14. The factory calls `afterCreatePoolHook` on the entry point, which forwards the hook to `BaseV1PluginFactory`.
+15. `BaseV1PluginFactory.afterCreatePoolHook` validates the created plugin and marks the pool as a known custom pool.
 16. The factory records `customPoolByPair[customDeployer][token0][token1]`, mirrors the reverse token order, records `deployerByPool[customPool]`, emits `CustomPool`, and creates a vault if a vault factory is configured.
 
-Later, the team expects to make custom pool creation public by enabling public pool creation mode in `CustomPoolPluginFactory`. The entry point also has its own public custom pool creation mode; enabling it has broader implications because deployers can call the entry point directly, so auditors should verify the intended operational configuration for both layers.
+Later, the team expects to make custom pool creation public by enabling public pool creation mode in `BaseV1PluginFactory`. The entry point also has its own public custom pool creation mode; enabling it has broader implications because deployers can call the entry point directly, so auditors should verify the intended operational configuration for both layers.
 
 ## In audit scope
 
 - Correct upgrade and initialization path for `AlgebraFactoryUpgradeable.setPoolDeployer`.
-- Storage layout safety for upgraded contracts, especially upgradeable core and plugin factory contracts.
+- Storage layout safety for upgraded core contracts and beacon-proxy plugin implementations.
 - New factory state and address derivation:
   - `customPoolByPair`
   - `deployerByPool`
@@ -65,8 +65,8 @@ Later, the team expects to make custom pool creation public by enabling public p
 - Access control around custom pool creation:
   - `CUSTOM_POOL_DEPLOYER` role on the Algebra factory
   - custom deployer allowlist and public mode on `AlgebraCustomPoolEntryPoint`
-  - `CUSTOM_POOL_DEPLOYER` role and public mode on `CustomPoolPluginFactory`
-- Token whitelist enforcement in `CustomPoolPluginFactory`.
+  - `CUSTOM_POOL_DEPLOYER` role and public mode on `BaseV1PluginFactory`
+- Token whitelist enforcement in `BaseV1PluginFactory`.
 - Hook correctness:
   - only the expected entry point can call custom factory hooks
   - pending pool data cannot be spoofed
@@ -119,9 +119,9 @@ Entry point tests:
 - Management calls can only be made by the actual custom deployer for a pool and only when the entry point has the required administrator permission.
 - Batch whitelist operations reject zero addresses and emit expected events.
 
-CustomPoolPluginFactory tests:
+BaseV1PluginFactory tests:
 
-- Initialization rejects zero factory, zero entry point, and invalid plugin implementation.
+- Construction rejects zero factory, zero entry point, and invalid plugin implementation.
 - Owner/admin roles are assigned correctly and ownership transfer keeps admin role state consistent.
 - Token whitelist and batch whitelist behavior is owner-only.
 - Private mode requires `CUSTOM_POOL_DEPLOYER`.

@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] deployCustomPool 1`] = `4831327`;
+
+exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] setDefaultFeeConfiguration 1`] = `46793`;
+
+exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] setPublicPoolCreationMode 1`] = `47195`;
+
+exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] setTokenWhitelistBatch 1`] = `73017`;
