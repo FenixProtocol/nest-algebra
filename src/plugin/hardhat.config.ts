@@ -33,6 +33,20 @@ const DEFAULT_COMPILER_SETTINGS: SolcUserConfig = {
   },
 };
 
+const NEST_PLUGIN_COMPILER_SETTINGS: SolcUserConfig = {
+  version: '0.8.20',
+  settings: {
+    evmVersion: 'paris',
+    optimizer: {
+      enabled: true,
+      runs: 800,
+    },
+    metadata: {
+      bytecodeHash: 'none',
+    },
+  },
+};
+
 const LOWEST_COMPILER_SETTINGS: SolcUserConfig = {
   version: '0.8.20',
   settings: {
@@ -73,6 +87,12 @@ export default {
   },
   solidity: {
     compilers: [HIGHEST_OPTIMIZER_COMPILER_SETTINGS],
+    overrides: {
+      'contracts/NestTWAPFeePlugin.sol': NEST_PLUGIN_COMPILER_SETTINGS,
+      'contracts/NestMEVFeePlugin.sol': NEST_PLUGIN_COMPILER_SETTINGS,
+      'contracts/test/MockTimeNestTWAPFeePlugin.sol': NEST_PLUGIN_COMPILER_SETTINGS,
+      'contracts/test/MockTimeNestMEVFeePlugin.sol': NEST_PLUGIN_COMPILER_SETTINGS,
+    },
   },
   docgen: {
     outputDir: '../../docs/Contracts/Plugin',

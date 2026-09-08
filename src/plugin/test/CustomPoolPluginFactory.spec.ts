@@ -1,74 +1,18 @@
-import { Wallet, getCreateAddress, ZeroAddress } from 'ethers';
+import { Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import {
-  abi as POOL_DEPLOYER_ABI,
-  bytecode as POOL_DEPLOYER_BYTECODE,
-} from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPoolDeployer.sol/AlgebraPoolDeployer.json';
-import {
-  abi as POOL_ABI,
-  bytecode as POOL_BYTECODE,
-} from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
-import {
-  abi as ENTRY_POINT_ABI,
-  bytecode as ENTRY_POINT_BYTECODE,
-} from '@cryptoalgebra/integral-periphery/artifacts/contracts/AlgebraCustomPoolEntryPoint.sol/AlgebraCustomPoolEntryPoint.json';
-import {
-  abi as PROXY_ADMIN_ABI,
-  bytecode as PROXY_ADMIN_BYTECODE,
-} from '@cryptoalgebra/integral-core/artifacts/@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol/ProxyAdmin.json';
-import { AlgebraFactoryUpgradeable, AlgebraPool, AlgebraPoolDeployer } from '@cryptoalgebra/integral-core/typechain';
+import { abi as POOL_ABI, bytecode as POOL_BYTECODE } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
+import { AlgebraPool } from '@cryptoalgebra/integral-core/typechain';
 import { AlgebraBasePluginV1, CustomPoolPluginFactory } from '../typechain';
 import { expect } from './shared/expect';
-import { createEmptyFactoryProxy } from './shared/externalFixtures';
 import snapshotGasCost from './shared/snapshotGasCost';
-
-const transparentUpgradeableProxyArtifact = require(
-  '@cryptoalgebra/integral-core/artifacts/@openzeppelin/contracts/proxy/transparent/' +
-    'TransparentUpgradeableProxy.sol/TransparentUpgradeableProxy.json'
-);
-const { abi: TransparentUpgradeableProxy_ABI, bytecode: TransparentUpgradeableProxy_BYTECODE } = transparentUpgradeableProxyArtifact;
-
-const TEST_ADDRESSES: [string, string, string] = [
-  '0x1000000000000000000000000000000000000000',
-  '0x2000000000000000000000000000000000000000',
-  '0x3000000000000000000000000000000000000000',
-];
+import { createEmptyCustomPoolPluginFactoryProxy, customPoolEnvironmentFixture, sortAddresses, TEST_ADDRESSES } from './shared/customPoolFixtures';
 
 describe('CustomPoolPluginFactory', () => {
   let wallet: Wallet, other: Wallet;
 
-  async function createEmptyCustomPoolPluginFactoryProxy(): Promise<CustomPoolPluginFactory> {
-    const customFactoryFactory = await ethers.getContractFactory('CustomPoolPluginFactory');
-    const customFactoryImplementation = await customFactoryFactory.deploy();
-
-    const proxyAdminFactory = await ethers.getContractFactory(PROXY_ADMIN_ABI, PROXY_ADMIN_BYTECODE);
-    const proxyAdmin = await proxyAdminFactory.deploy();
-
-    const proxyFactory = await ethers.getContractFactory(TransparentUpgradeableProxy_ABI, TransparentUpgradeableProxy_BYTECODE);
-    const proxy = await proxyFactory.deploy(customFactoryImplementation.target, proxyAdmin.target, '0x');
-
-    return customFactoryFactory.attach(proxy.target) as any as CustomPoolPluginFactory;
-  }
-
   async function fixture() {
-    const [deployer] = await ethers.getSigners();
-    const poolDeployerAddress = getCreateAddress({
-      from: deployer.address,
-      nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 4,
-    });
-
-    const factory = await createEmptyFactoryProxy();
-    await factory.initialize(poolDeployerAddress);
-
-    const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
-    const poolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
-
-    const entryPointFactory = await ethers.getContractFactory(ENTRY_POINT_ABI, ENTRY_POINT_BYTECODE);
-    const entryPoint = (await entryPointFactory.deploy(factory)) as any;
-
-    await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), entryPoint);
-    await factory.grantRole(await factory.POOLS_ADMINISTRATOR_ROLE(), entryPoint);
+    const { factory, poolDeployer, entryPoint } = await customPoolEnvironmentFixture();
 
     const pluginImplementationFactory = await ethers.getContractFactory('AlgebraBasePluginV1');
     const pluginImplementation = (await pluginImplementationFactory.deploy()) as any as AlgebraBasePluginV1;
@@ -84,14 +28,8 @@ describe('CustomPoolPluginFactory', () => {
     [wallet, other] = await (ethers as any).getSigners();
   });
 
-  function sortTokens(tokenA: string, tokenB: string): [string, string] {
-    return BigInt(tokenA) < BigInt(tokenB) ? [tokenA, tokenB] : [tokenB, tokenA];
-  }
-
   it('fail if try initialize on implementation', async () => {
-    const factory = await createEmptyFactoryProxy();
-    const entryPointFactory = await ethers.getContractFactory(ENTRY_POINT_ABI, ENTRY_POINT_BYTECODE);
-    const entryPoint = (await entryPointFactory.deploy(factory)) as any;
+    const { factory, entryPoint } = await customPoolEnvironmentFixture();
     const pluginImplementation = await (await ethers.getContractFactory('AlgebraBasePluginV1')).deploy();
     const customFactoryImplementation = await (await ethers.getContractFactory('CustomPoolPluginFactory')).deploy();
 
@@ -147,7 +85,7 @@ describe('CustomPoolPluginFactory', () => {
 
   it('deploys custom pool and plugin through the custom pool entry point', async () => {
     const { factory, customFactory } = await loadFixture(fixture);
-    const [token0, token1] = sortTokens(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
+    const [token0, token1] = sortAddresses(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
     await customFactory.setTokenWhitelistBatch([token0, token1], true);
 
     const expectedPool = await factory.computeCustomPoolAddress(await customFactory.getAddress(), token0, token1);
@@ -173,7 +111,7 @@ describe('CustomPoolPluginFactory', () => {
     await customFactory.setPublicPoolCreationMode(true);
     await customFactory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[2]], true);
 
-    const [token0, token1] = sortTokens(TEST_ADDRESSES[0], TEST_ADDRESSES[2]);
+    const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[2]);
     const expectedPool = await factory.computeCustomPoolAddress(await customFactory.getAddress(), token0, token1);
 
     await customFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[2], '0x');
