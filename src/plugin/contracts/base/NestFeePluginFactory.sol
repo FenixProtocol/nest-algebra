@@ -44,7 +44,6 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   bool public override isPublicPoolCreationMode;
 
   mapping(address pool => address plugin) public override pluginByPool;
-  mapping(address token => bool allowed) public override isWhitelistedToken;
   mapping(address pool => bool created) public override isCustomPool;
   mapping(address pool => PendingCustomPool pendingPool) private _pendingCustomPoolByAddress;
 
@@ -87,8 +86,6 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   /// @inheritdoc INestFeePluginFactory
   function deployCustomPool(address tokenA, address tokenB, bytes calldata data) external override returns (address customPool) {
     if (!isPublicPoolCreationMode) _checkRole(CUSTOM_POOL_DEPLOYER);
-    require(isWhitelistedToken[tokenA], 'TokenA not whitelisted');
-    require(isWhitelistedToken[tokenB], 'TokenB not whitelisted');
 
     (address token0, address token1) = _sortTokens(tokenA, tokenB);
     address expectedPool = IAlgebraFactory(algebraFactory).computeCustomPoolAddress(address(this), token0, token1);
@@ -174,17 +171,6 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   }
 
   /// @inheritdoc INestFeePluginFactory
-  function setTokenWhitelist(address token, bool allowed) external override onlyOwner {
-    _setTokenWhitelist(token, allowed);
-  }
-
-  /// @inheritdoc INestFeePluginFactory
-  function setTokenWhitelistBatch(address[] calldata tokens, bool allowed) external override onlyOwner {
-    uint256 length = tokens.length;
-    for (uint256 i; i < length; ++i) _setTokenWhitelist(tokens[i], allowed);
-  }
-
-  /// @inheritdoc INestFeePluginFactory
   function setDefaultDeviationFeeConfiguration(
     uint16 baseFee,
     uint16 feeCap,
@@ -221,13 +207,6 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     plugin.setDeviationFeeConfig(config.baseFee, config.feeCap, config.scalingFactor, config.twapWindow);
     pluginAddress = address(plugin);
     pluginByPool[pool] = pluginAddress;
-  }
-
-  function _setTokenWhitelist(address token, bool allowed) internal {
-    require(token != address(0), 'Zero token');
-    require(isWhitelistedToken[token] != allowed, 'Whitelist unchanged');
-    isWhitelistedToken[token] = allowed;
-    emit TokenWhitelist(token, allowed);
   }
 
   function _setImplementation(address newImplementation) internal {

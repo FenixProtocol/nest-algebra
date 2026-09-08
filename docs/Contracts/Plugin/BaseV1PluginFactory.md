@@ -33,8 +33,9 @@ deployCustomPool(address tokenA, address tokenB, bytes data)
 Before creating a pool, the contract checks:
 
 - If public creation mode is disabled, the caller must have `CUSTOM_POOL_DEPLOYER`.
-- `tokenA` and `tokenB` must both be whitelisted.
 - The token pair must be valid and not already in a pending creation flow.
+
+The factory does not restrict custom-pool creation by token address.
 
 The `data` parameter is forwarded through the custom pool hook flow and included in hook validation, but it is not interpreted by
 `BaseV1PluginFactory` for now.
@@ -54,8 +55,6 @@ During creation, the factory:
 The owner can:
 
 - Enable or disable public custom pool creation with `setPublicPoolCreationMode`.
-- Add or remove a single whitelisted token with `setTokenWhitelist`.
-- Add or remove a batch of whitelisted tokens with `setTokenWhitelistBatch`.
 
 An account authorized through the Algebra factory's `ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR` role (or the Algebra factory owner) can:
 

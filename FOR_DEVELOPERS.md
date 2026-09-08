@@ -164,8 +164,6 @@ constructor(
 function deployCustomPool(address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
 
 function setPublicPoolCreationMode(bool mode) external;
-function setTokenWhitelist(address token, bool allowed) external;
-function setTokenWhitelistBatch(address[] calldata tokens, bool allowed) external;
 function setDefaultFeeConfiguration(AlgebraFeeConfiguration calldata newConfig) external;
 function upgradeTo(address newImplementation) external;
 
@@ -185,7 +183,6 @@ Added events:
 
 ```solidity
 event PublicPoolCreationMode(bool mode);
-event TokenWhitelist(address indexed token, bool allowed);
 event DefaultFeeConfiguration(AlgebraFeeConfiguration newConfig);
 event Upgraded(address indexed implementation);
 ```
@@ -202,7 +199,7 @@ Behavior:
 
 - Private mode requires the caller of `deployCustomPool` to have `CUSTOM_POOL_DEPLOYER`.
 - Public mode allows any caller to call `deployCustomPool`.
-- Both `tokenA` and `tokenB` must be whitelisted.
+- Any valid token pair can be used; the plugin factory does not maintain a token whitelist.
 - The factory stores pending pool data before calling the entry point.
 - `beforeCreatePoolHook` validates caller, deployer, creator, sorted tokens, and `data` hash before deploying the plugin.
 - `afterCreatePoolHook` validates pending state and marks the pool in `isCustomPool`.
@@ -356,14 +353,7 @@ AlgebraFactoryUpgradeable.grantRole(CUSTOM_POOL_DEPLOYER, algebraCustomPoolEntry
 AlgebraCustomPoolEntryPoint.setCustomPoolDeployer(baseV1PluginFactory, true);
 ```
 
-8. Whitelist tokens allowed for custom pool creation:
-
-```solidity
-BaseV1PluginFactory.setTokenWhitelist(token, true);
-BaseV1PluginFactory.setTokenWhitelistBatch(tokens, true);
-```
-
-9. Create a custom pool:
+8. Create a custom pool:
 
 ```solidity
 BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data);
@@ -398,7 +388,7 @@ For normal public custom pool creation through `BaseV1PluginFactory`, enable pub
 BaseV1PluginFactory.setPublicPoolCreationMode(true);
 ```
 
-This allows any caller to call `deployCustomPool`, but token whitelist checks still apply.
+This allows any caller to call `deployCustomPool` with any valid token pair.
 
 To disable it:
 

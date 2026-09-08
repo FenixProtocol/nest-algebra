@@ -11,9 +11,6 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
   /// @notice Emitted when public custom-pool creation mode changes.
   event PublicPoolCreationMode(bool mode);
 
-  /// @notice Emitted when a token's custom-pool whitelist status changes.
-  event TokenWhitelist(address indexed token, bool allowed);
-
   /// @notice Emitted when the default deviation fee configuration is changed
   /// @param baseFee The default fee charged on all swaps, in hundredths of a bip (1e-6)
   /// @param feeCap The default maximum total fee, in hundredths of a bip (1e-6)
@@ -61,9 +58,6 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
   /// @return The address of corresponding plugin
   function pluginByPool(address pool) external view returns (address);
 
-  /// @notice Whether a token may be used in a custom pool created by this factory.
-  function isWhitelistedToken(address token) external view returns (bool);
-
   /// @notice Whether a pool was created through this factory's custom-pool flow.
   function isCustomPool(address pool) external view returns (bool);
 
@@ -90,12 +84,6 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
 
   /// @notice Changes public custom-pool creation mode.
   function setPublicPoolCreationMode(bool mode) external;
-
-  /// @notice Changes a token's custom-pool whitelist status.
-  function setTokenWhitelist(address token, bool allowed) external;
-
-  /// @notice Changes whitelist status for a batch of custom-pool tokens.
-  function setTokenWhitelistBatch(address[] calldata tokens, bool allowed) external;
 
   /// @notice Changes the default deviation fee configuration for new plugins
   function setDefaultDeviationFeeConfiguration(uint16 baseFee, uint16 feeCap, uint64 scalingFactor, uint32 twapWindow) external;

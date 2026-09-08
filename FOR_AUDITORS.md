@@ -39,17 +39,16 @@ The farming contracts under `src/farming` and `src/periphery/contracts/V3Migrato
    - Algebra factory must allow the entry point to create custom pools through the `CUSTOM_POOL_DEPLOYER` role.
    - Algebra custom pool entry point must allow `BaseV1PluginFactory` as a custom pool deployer while private mode is enabled.
    - Algebra custom pool entry point must be allowed to manage pool parameters where needed through the factory pool administrator permissions through the `POOLS_ADMINISTRATOR` role.
-6. Team configures the token whitelist in `BaseV1PluginFactory`.
-7. An account authorized by role, or any account after public mode is enabled in `BaseV1PluginFactory`, calls `BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data)`.
-8. `BaseV1PluginFactory` validates permissions, whitelist status, sorted tokens, expected pool address, and pending pool state.
-9. `BaseV1PluginFactory` calls `AlgebraCustomPoolEntryPoint.createCustomPool(...)`.
-10. The entry point calls `AlgebraFactoryUpgradeable.createCustomPool(...)`.
-11. The factory calls `beforeCreatePoolHook` on the entry point, which forwards the hook to `BaseV1PluginFactory`.
-12. `BaseV1PluginFactory.beforeCreatePoolHook` validates pending pool data and deploys a plugin for the expected custom pool address.
-13. The factory deploys the custom pool through `AlgebraPoolDeployer` using a CREATE2 salt that includes the custom deployer address and token pair.
-14. The factory calls `afterCreatePoolHook` on the entry point, which forwards the hook to `BaseV1PluginFactory`.
-15. `BaseV1PluginFactory.afterCreatePoolHook` validates the created plugin and marks the pool as a known custom pool.
-16. The factory records `customPoolByPair[customDeployer][token0][token1]`, mirrors the reverse token order, records `deployerByPool[customPool]`, emits `CustomPool`, and creates a vault if a vault factory is configured.
+6. An account authorized by role, or any account after public mode is enabled in `BaseV1PluginFactory`, calls `BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data)`.
+7. `BaseV1PluginFactory` validates permissions, sorted tokens, expected pool address, and pending pool state.
+8. `BaseV1PluginFactory` calls `AlgebraCustomPoolEntryPoint.createCustomPool(...)`.
+9. The entry point calls `AlgebraFactoryUpgradeable.createCustomPool(...)`.
+10. The factory calls `beforeCreatePoolHook` on the entry point, which forwards the hook to `BaseV1PluginFactory`.
+11. `BaseV1PluginFactory.beforeCreatePoolHook` validates pending pool data and deploys a plugin for the expected custom pool address.
+12. The factory deploys the custom pool through `AlgebraPoolDeployer` using a CREATE2 salt that includes the custom deployer address and token pair.
+13. The factory calls `afterCreatePoolHook` on the entry point, which forwards the hook to `BaseV1PluginFactory`.
+14. `BaseV1PluginFactory.afterCreatePoolHook` validates the created plugin and marks the pool as a known custom pool.
+15. The factory records `customPoolByPair[customDeployer][token0][token1]`, mirrors the reverse token order, records `deployerByPool[customPool]`, emits `CustomPool`, and creates a vault if a vault factory is configured.
 
 Later, the team expects to make custom pool creation public by enabling public pool creation mode in `BaseV1PluginFactory`. The entry point also has its own public custom pool creation mode; enabling it has broader implications because deployers can call the entry point directly, so auditors should verify the intended operational configuration for both layers.
 
@@ -66,7 +65,6 @@ Later, the team expects to make custom pool creation public by enabling public p
   - `CUSTOM_POOL_DEPLOYER` role on the Algebra factory
   - custom deployer allowlist and public mode on `AlgebraCustomPoolEntryPoint`
   - `CUSTOM_POOL_DEPLOYER` role and public mode on `BaseV1PluginFactory`
-- Token whitelist enforcement in `BaseV1PluginFactory`.
 - Hook correctness:
   - only the expected entry point can call custom factory hooks
   - pending pool data cannot be spoofed
@@ -123,10 +121,9 @@ BaseV1PluginFactory tests:
 
 - Construction rejects zero factory, zero entry point, and invalid plugin implementation.
 - Owner/admin roles are assigned correctly and ownership transfer keeps admin role state consistent.
-- Token whitelist and batch whitelist behavior is owner-only.
 - Private mode requires `CUSTOM_POOL_DEPLOYER`.
 - Public mode allows pool creation without `CUSTOM_POOL_DEPLOYER`.
-- `deployCustomPool` rejects non-whitelisted tokens.
+- `deployCustomPool` permits any valid token pair.
 - Pending pool state cannot be overwritten or reused.
 - `beforeCreatePoolHook` validates creator, deployer, sorted tokens, data hash, and caller.
 - `afterCreatePoolHook` validates caller, deployer, pending state, plugin address, and plugin registration.

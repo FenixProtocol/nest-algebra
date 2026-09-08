@@ -29,7 +29,6 @@ async function deployCustomPoolWithLiquidity(product: Product) {
 
   const token0Address = await token0.getAddress();
   const token1Address = await token1.getAddress();
-  await nestFactory.setTokenWhitelistBatch([token0Address, token1Address], true);
   const poolAddress = await nestFactory.deployCustomPool.staticCall(token0Address, token1Address, '0x');
   await nestFactory.deployCustomPool(token0Address, token1Address, '0x');
   const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(poolAddress) as any as AlgebraPool;

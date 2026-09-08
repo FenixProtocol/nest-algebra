@@ -53,43 +53,17 @@ describe('BaseV1PluginFactory', () => {
     expect(await baseV1Factory.defaultFeeConfiguration()).to.deep.eq([2900n, 12000n, 360n, 60000n, 59n, 8500n, 100n]);
   });
 
-  it('manages token whitelist in batches', async () => {
-    const { baseV1Factory } = await loadFixture(fixture);
-
-    await baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true);
-    expect(await baseV1Factory.isWhitelistedToken(TEST_ADDRESSES[0])).to.be.true;
-    expect(await baseV1Factory.isWhitelistedToken(TEST_ADDRESSES[1])).to.be.true;
-
-    await baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], false);
-    expect(await baseV1Factory.isWhitelistedToken(TEST_ADDRESSES[0])).to.be.false;
-    expect(await baseV1Factory.isWhitelistedToken(TEST_ADDRESSES[1])).to.be.false;
-
-    await expect(baseV1Factory.connect(other).setTokenWhitelistBatch([TEST_ADDRESSES[2]], true)).to.be.revertedWith(
-      `Ownable: caller is not the owner`
-    );
-    await expect(baseV1Factory.setTokenWhitelistBatch([ZeroAddress], true)).to.be.revertedWith('Zero token');
-  });
-
   it('reverts custom pool deployment when caller lacks deployer role in private mode', async () => {
     const { baseV1Factory } = await loadFixture(fixture);
-    await baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true);
 
     await expect(baseV1Factory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')).to.be.revertedWith(
       `AccessControl: account ${other.address.toLowerCase()} is missing role ${await baseV1Factory.CUSTOM_POOL_DEPLOYER()}`
     );
   });
 
-  it('reverts custom pool deployment for non-whitelisted tokens', async () => {
-    const { baseV1Factory } = await loadFixture(fixture);
-    await baseV1Factory.setTokenWhitelist(TEST_ADDRESSES[0], true);
-
-    await expect(baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')).to.be.revertedWith('TokenB not whitelisted');
-  });
-
   it('deploys custom pool and plugin through the custom pool entry point', async () => {
     const { factory, baseV1Factory } = await loadFixture(fixture);
     const [token0, token1] = sortAddresses(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
-    await baseV1Factory.setTokenWhitelistBatch([token0, token1], true);
 
     const expectedPool = await factory.computeCustomPoolAddress(await baseV1Factory.getAddress(), token0, token1);
     expect(await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[1], TEST_ADDRESSES[0], '0x1234')).to.eq(expectedPool);
@@ -145,7 +119,6 @@ describe('BaseV1PluginFactory', () => {
   it('allows public custom pool deployment without deployer role', async () => {
     const { factory, baseV1Factory } = await loadFixture(fixture);
     await baseV1Factory.setPublicPoolCreationMode(true);
-    await baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[2]], true);
 
     const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[2]);
     const expectedPool = await factory.computeCustomPoolAddress(await baseV1Factory.getAddress(), token0, token1);
@@ -203,7 +176,6 @@ describe('BaseV1PluginFactory', () => {
 
   it('allows owner to manage created custom pool settings through entry point', async () => {
     const { baseV1Factory } = await loadFixture(fixture);
-    await baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true);
 
     const poolAddress = await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
     await baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
@@ -223,14 +195,8 @@ describe('BaseV1PluginFactory', () => {
   });
 
   describe('#gas snapshots [ @skip-on-coverage ]', () => {
-    it('setTokenWhitelistBatch', async () => {
-      const { baseV1Factory } = await loadFixture(fixture);
-      await snapshotGasCost(baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true));
-    });
-
     it('deployCustomPool', async () => {
       const { baseV1Factory } = await loadFixture(fixture);
-      await baseV1Factory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true);
       await snapshotGasCost(baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x'));
     });
 

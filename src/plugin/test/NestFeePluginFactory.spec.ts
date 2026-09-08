@@ -77,7 +77,6 @@ for (const [product, fixture] of [
     it('creates a guarded custom pool and plugin through the entry point', async () => {
       const { factory, nestFactory, implementationName } = await loadFixture(fixture);
       const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
-      await nestFactory.setTokenWhitelistBatch([token0, token1], true);
       const expectedPool = await factory.computeCustomPoolAddress(await nestFactory.getAddress(), token0, token1);
 
       expect(await nestFactory.deployCustomPool.staticCall(token1, token0, '0x1234')).to.eq(expectedPool);
@@ -90,10 +89,9 @@ for (const [product, fixture] of [
       expect(await (await ethers.getContractAt(implementationName, pluginAddress)).pool()).to.eq(expectedPool);
     });
 
-    it('enforces custom deployer and token whitelist controls', async () => {
+    it('enforces custom deployer controls', async () => {
       const [, other] = await ethers.getSigners();
       const { nestFactory } = await loadFixture(fixture);
-      await nestFactory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true);
 
       await expect(nestFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')).to.be.revertedWith(
         `AccessControl: account ${other.address.toLowerCase()} is missing role ${await nestFactory.CUSTOM_POOL_DEPLOYER()}`
@@ -101,7 +99,6 @@ for (const [product, fixture] of [
 
       await nestFactory.setPublicPoolCreationMode(true);
       await nestFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
-      await expect(nestFactory.setTokenWhitelist(ZeroAddress, true)).to.be.revertedWith('Zero token');
     });
 
     it('restricts custom hooks and manages only its own custom pools', async () => {
@@ -111,7 +108,6 @@ for (const [product, fixture] of [
         nestFactory.beforeCreatePoolHook(TEST_ADDRESSES[0], other.address, await nestFactory.getAddress(), TEST_ADDRESSES[1], TEST_ADDRESSES[2], '0x')
       ).to.be.revertedWith('Only entry point');
 
-      await nestFactory.setTokenWhitelistBatch([TEST_ADDRESSES[0], TEST_ADDRESSES[1]], true);
       const poolAddress = await nestFactory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
       await nestFactory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
       const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(poolAddress) as any as AlgebraPool;
