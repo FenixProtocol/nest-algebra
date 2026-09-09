@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] deployCustomPool 1`] = `4827018`;
+exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] deployCustomPool 1`] = `4824841`;
 
 exports[`BaseV1PluginFactory #gas snapshots [ @skip-on-coverage ] setDefaultFeeConfiguration 1`] = `46793`;
 

@@ -82,7 +82,6 @@ describe('AlgebraCustomPoolEntryPoint', () => {
 
     expect(await entryPoint.owner()).to.eq(wallet.address);
     expect(await entryPoint.factory()).to.eq(await factory.getAddress());
-    expect(await entryPoint.isPublicPoolCreationMode()).to.be.false;
   });
 
   it('reverts if constructed with zero factory', async () => {
@@ -108,7 +107,7 @@ describe('AlgebraCustomPoolEntryPoint', () => {
     expect(await entryPoint.isCustomPoolDeployer(TEST_ADDRESSES[2])).to.be.true;
   });
 
-  it('restricts custom pool deployer and public mode management to owner', async () => {
+  it('restricts custom pool deployer management to owner', async () => {
     const { entryPoint } = await loadFixture(fixture);
 
     await expect(entryPoint.connect(other).setCustomPoolDeployer(TEST_ADDRESSES[0], true)).to.be.revertedWith(
@@ -117,38 +116,26 @@ describe('AlgebraCustomPoolEntryPoint', () => {
     await expect(entryPoint.connect(other).setCustomPoolDeployerBatch([TEST_ADDRESSES[0]], true)).to.be.revertedWith(
       'Ownable: caller is not the owner'
     );
-    await expect(entryPoint.connect(other).setPublicPoolCreationMode(true)).to.be.revertedWith(
-      'Ownable: caller is not the owner'
-    );
     await expect(entryPoint.setCustomPoolDeployer(ZeroAddress, true)).to.be.revertedWithoutReason;
     await expect(entryPoint.setCustomPoolDeployerBatch([TEST_ADDRESSES[0], ZeroAddress], true)).to.be
       .revertedWithoutReason;
   });
 
-  it('allows owner to set public custom pool creation mode', async () => {
-    const { entryPoint } = await loadFixture(fixture);
-
-    await expect(entryPoint.setPublicPoolCreationMode(true))
-      .to.emit(entryPoint, 'PublicPoolCreationMode')
-      .withArgs(true);
-    expect(await entryPoint.isPublicPoolCreationMode()).to.be.true;
-  });
-
-  it('reverts custom pool creation by non-whitelisted deployer in private mode', async () => {
-    const { entryPoint, pluginFactory } = await loadFixture(fixture);
+  it('always reverts custom pool creation by a non-whitelisted deployer', async () => {
+    const { entryPoint, directCustomDeployer } = await loadFixture(fixture);
 
     await expect(
-      pluginFactory.createCustomPool(
+      directCustomDeployer.createCustomPool(
         await entryPoint.getAddress(),
         wallet.address,
         TEST_ADDRESSES[0],
         TEST_ADDRESSES[1],
         '0x'
       )
-    ).to.be.revertedWithoutReason;
+    ).to.be.revertedWith('Can`t create custom pools');
   });
 
-  it('allows custom pool creation by whitelisted deployer in private mode', async () => {
+  it('allows custom pool creation by a whitelisted deployer', async () => {
     const { factory, entryPoint, pluginFactory, customDeployer } = await loadFixture(fixture);
     const [token0, token1] = sortTokens(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
 
@@ -166,28 +153,10 @@ describe('AlgebraCustomPoolEntryPoint', () => {
     );
   });
 
-  it('allows non-whitelisted deployer in public mode', async () => {
-    const { factory, entryPoint, pluginFactory, customDeployer } = await loadFixture(fixture);
-    const [token0, token1] = sortTokens(TEST_ADDRESSES[1], TEST_ADDRESSES[2]);
-
-    await entryPoint.setPublicPoolCreationMode(true);
-    await pluginFactory.createCustomPool(
-      await entryPoint.getAddress(),
-      wallet.address,
-      TEST_ADDRESSES[1],
-      TEST_ADDRESSES[2],
-      '0x'
-    );
-
-    expect(await factory.customPoolByPair(customDeployer, token0, token1)).to.eq(
-      await factory.computeCustomPoolAddress(customDeployer, token0, token1)
-    );
-  });
-
-  it('keeps deployer sender check in public mode', async () => {
+  it('requires the deployer to be the sender even when it is whitelisted', async () => {
     const { entryPoint, customDeployer } = await loadFixture(fixture);
 
-    await entryPoint.setPublicPoolCreationMode(true);
+    await entryPoint.setCustomPoolDeployer(customDeployer, true);
     await expect(
       entryPoint.createCustomPool(customDeployer, wallet.address, TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')
     ).to.be.revertedWith('Only deployer');

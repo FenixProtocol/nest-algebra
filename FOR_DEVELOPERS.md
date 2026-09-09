@@ -123,7 +123,6 @@ function createCustomPool(
   bytes calldata data
 ) external returns (address customPool);
 
-function setPublicPoolCreationMode(bool mode) external;
 function setCustomPoolDeployer(address deployer, bool allowed) external;
 function setCustomPoolDeployerBatch(address[] calldata deployers, bool allowed) external;
 
@@ -136,14 +135,13 @@ function setFee(address pool, uint16 newFee) external;
 Added events:
 
 ```solidity
-event PublicPoolCreationMode(bool mode);
 event CustomPoolDeployer(address indexed deployer, bool allowed);
 ```
 
 Behavior:
 
 - `createCustomPool` requires `msg.sender == deployer`.
-- If entry point public mode is disabled, `deployer` must be whitelisted in `isCustomPoolDeployer`.
+- `deployer` must always be whitelisted in `isCustomPoolDeployer`.
 - The entry point forwards `beforeCreatePoolHook` and `afterCreatePoolHook` calls from the Algebra factory to the custom deployer.
 - Management functions can only be called by the deployer that created the custom pool.
 - For management functions to succeed, the entry point must also be allowed as a pool administrator by the Algebra factory.
@@ -347,7 +345,7 @@ new BaseV1PluginFactory(algebraFactory, algebraCustomPoolEntryPoint, pluginImple
 AlgebraFactoryUpgradeable.grantRole(CUSTOM_POOL_DEPLOYER, algebraCustomPoolEntryPoint);
 ```
 
-7. Whitelist `BaseV1PluginFactory` as a custom deployer in the entry point while entry point public mode is disabled:
+7. Whitelist `BaseV1PluginFactory` as a custom deployer in the entry point:
 
 ```solidity
 AlgebraCustomPoolEntryPoint.setCustomPoolDeployer(baseV1PluginFactory, true);
@@ -358,6 +356,11 @@ AlgebraCustomPoolEntryPoint.setCustomPoolDeployer(baseV1PluginFactory, true);
 ```solidity
 BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data);
 ```
+
+`AlgebraCustomPoolEntryPoint` is not upgradeable, and plugin factories store its address as an immutable. To update an existing deployment,
+deploy a new entry point and replacement plugin factories, grant the new entry point the required factory roles, whitelist the replacement
+plugin factories, and revoke the old entry point's `CUSTOM_POOL_DEPLOYER` permission. Retain its `POOLS_ADMINISTRATOR_ROLE` only while legacy
+custom pools still need management through the old entry point, then revoke it when the old deployment is fully retired.
 
 The custom pool creation call flow is:
 
@@ -375,11 +378,10 @@ caller
 
 ### Turning public custom pool creation on and off
 
-There are two public-mode switches:
+Public custom pool creation is controlled by the plugin factory:
 
 ```solidity
 BaseV1PluginFactory.setPublicPoolCreationMode(bool mode);
-AlgebraCustomPoolEntryPoint.setPublicPoolCreationMode(bool mode);
 ```
 
 For normal public custom pool creation through `BaseV1PluginFactory`, enable public mode on `BaseV1PluginFactory`:
@@ -398,7 +400,7 @@ BaseV1PluginFactory.setPublicPoolCreationMode(false);
 
 When disabled, callers need `CUSTOM_POOL_DEPLOYER` on `BaseV1PluginFactory`.
 
-The entry point public mode is broader. If enabled, any deployer contract can call the entry point directly as long as `msg.sender == deployer`. Keep entry point public mode disabled unless direct custom deployer integrations are intentionally supported.
+The entry point always requires the calling deployer contract to be whitelisted. This allows an approved plugin factory to offer public creation to its users without allowing arbitrary deployer contracts or plugins into the Algebra factory registry.
 
 Classic pool public creation is separate and still controlled by:
 

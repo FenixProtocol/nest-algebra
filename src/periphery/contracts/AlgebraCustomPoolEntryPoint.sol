@@ -14,9 +14,6 @@ contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint, Ownable2St
     address public immutable override factory;
 
     /// @inheritdoc IAlgebraCustomPoolEntryPoint
-    bool public override isPublicPoolCreationMode;
-
-    /// @inheritdoc IAlgebraCustomPoolEntryPoint
     mapping(address => bool) public override isCustomPoolDeployer;
 
     modifier onlyCustomDeployer(address pool) {
@@ -38,16 +35,8 @@ contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint, Ownable2St
         bytes calldata data
     ) external override returns (address customPool) {
         require(msg.sender == deployer, 'Only deployer');
-        if (!isPublicPoolCreationMode) {
-            require(isCustomPoolDeployer[deployer], 'Can`t create custom pools');
-        }
+        require(isCustomPoolDeployer[deployer], 'Can`t create custom pools');
         return IAlgebraFactory(factory).createCustomPool(deployer, creator, tokenA, tokenB, data);
-    }
-
-    /// @inheritdoc IAlgebraCustomPoolEntryPoint
-    function setPublicPoolCreationMode(bool mode) external override onlyOwner {
-        isPublicPoolCreationMode = mode;
-        emit PublicPoolCreationMode(mode);
     }
 
     /// @inheritdoc IAlgebraCustomPoolEntryPoint

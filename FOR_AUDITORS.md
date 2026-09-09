@@ -37,7 +37,7 @@ The farming contracts under `src/farming` and `src/periphery/contracts/V3Migrato
 4. Team deploys `BaseV1PluginFactory` with the Algebra factory, custom pool entry point, and plugin implementation constructor arguments.
 5. Team grants the required permissions:
    - Algebra factory must allow the entry point to create custom pools through the `CUSTOM_POOL_DEPLOYER` role.
-   - Algebra custom pool entry point must allow `BaseV1PluginFactory` as a custom pool deployer while private mode is enabled.
+   - Algebra custom pool entry point must allow `BaseV1PluginFactory` as a custom pool deployer.
    - Algebra custom pool entry point must be allowed to manage pool parameters where needed through the factory pool administrator permissions through the `POOLS_ADMINISTRATOR` role.
 6. An account authorized by role, or any account after public mode is enabled in `BaseV1PluginFactory`, calls `BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data)`.
 7. `BaseV1PluginFactory` validates permissions, sorted tokens, expected pool address, and pending pool state.
@@ -50,7 +50,7 @@ The farming contracts under `src/farming` and `src/periphery/contracts/V3Migrato
 14. `BaseV1PluginFactory.afterCreatePoolHook` validates the created plugin and marks the pool as a known custom pool.
 15. The factory records `customPoolByPair[customDeployer][token0][token1]`, mirrors the reverse token order, records `deployerByPool[customPool]`, emits `CustomPool`, and creates a vault if a vault factory is configured.
 
-Later, the team expects to make custom pool creation public by enabling public pool creation mode in `BaseV1PluginFactory`. The entry point also has its own public custom pool creation mode; enabling it has broader implications because deployers can call the entry point directly, so auditors should verify the intended operational configuration for both layers.
+Later, the team expects to make custom pool creation public by enabling public pool creation mode in `BaseV1PluginFactory`. The entry point itself always requires the calling deployer contract to be allowlisted, so public users can create pools only through an approved plugin factory.
 
 ## In audit scope
 
@@ -63,7 +63,7 @@ Later, the team expects to make custom pool creation public by enabling public p
   - CREATE2 salts for classic pools versus custom pools
 - Access control around custom pool creation:
   - `CUSTOM_POOL_DEPLOYER` role on the Algebra factory
-  - custom deployer allowlist and public mode on `AlgebraCustomPoolEntryPoint`
+  - mandatory custom deployer allowlist on `AlgebraCustomPoolEntryPoint`
   - `CUSTOM_POOL_DEPLOYER` role and public mode on `BaseV1PluginFactory`
 - Hook correctness:
   - only the expected entry point can call custom factory hooks

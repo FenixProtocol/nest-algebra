@@ -5,10 +5,6 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPluginF
 
 /// @title An interface for a contract that deploys and manages Algebra custom pools
 interface IAlgebraCustomPoolEntryPoint is IAlgebraPluginFactory {
-    /// @notice Emitted when public custom pool creation mode is changed
-    /// @param mode The new public custom pool creation mode
-    event PublicPoolCreationMode(bool mode);
-
     /// @notice Emitted when a custom pool deployer whitelist status is changed
     /// @param deployer The custom pool deployer address
     /// @param allowed Whether the deployer is whitelisted
@@ -18,11 +14,7 @@ interface IAlgebraCustomPoolEntryPoint is IAlgebraPluginFactory {
     /// @return factory The address of AlgebraFactory
     function factory() external view returns (address factory);
 
-    /// @notice Returns the status of public custom pool creation mode
-    /// @return bool Whether custom pool creation is public
-    function isPublicPoolCreationMode() external view returns (bool);
-
-    /// @notice Returns whether a deployer can create custom pools in private mode
+    /// @notice Returns whether a deployer can create custom pools
     /// @param deployer The custom pool deployer address
     /// @return bool Whether the deployer is whitelisted
     function isCustomPoolDeployer(address deployer) external view returns (bool);
@@ -53,10 +45,6 @@ interface IAlgebraCustomPoolEntryPoint is IAlgebraPluginFactory {
 
     /// @notice Changes the fee value in a custom pool
     function setFee(address pool, uint16 newFee) external;
-
-    /// @notice Changes public custom pool creation mode
-    /// @param mode The new public custom pool creation mode
-    function setPublicPoolCreationMode(bool mode) external;
 
     /// @notice Changes a custom pool deployer whitelist status
     /// @param deployer The custom pool deployer address
