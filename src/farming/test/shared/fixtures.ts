@@ -80,7 +80,7 @@ const v3CoreFactoryFixture: () => Promise<[IAlgebraFactory, IAlgebraPoolDeployer
   });
 
   const _factory = await createEmptyFactoryProxy();
-  await _factory.initialize(poolDeployerAddress);
+  await _factory.initialize(poolDeployerAddress, deployer.address);
 
   const poolDeployerFactory = await ethers.getContractFactory(AlgebraPoolDeployerJson.abi, AlgebraPoolDeployerJson.bytecode);
   const _deployer = (await poolDeployerFactory.deploy(_factory)) as any as IAlgebraPoolDeployer;

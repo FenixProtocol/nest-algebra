@@ -139,15 +139,16 @@ constructor() public
 ### initialize
 
 ```solidity
-function initialize(address _poolDeployer) external
+function initialize(address _poolDeployer, address _initOwner) external
 ```
-**Selector**: `0xc4d66de8`
+**Selector**: `0x485cc955`
 
 
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _poolDeployer | address |  |
+| _initOwner | address |  |
 
 ### owner
 
@@ -374,4 +375,3 @@ function renounceOwnership() public
 *Developer note: Leaves the contract without owner. It will not be possible to call &#x60;onlyOwner&#x60; functions anymore.
 Can only be called by the current owner if RENOUNCE_OWNERSHIP_DELAY seconds
 have passed since the call to the startRenounceOwnership() function.*
-

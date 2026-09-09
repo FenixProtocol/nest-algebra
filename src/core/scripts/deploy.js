@@ -21,16 +21,15 @@ async function main() {
   // precompute
   const poolDeployerAddress = hre.ethers.getCreateAddress({
     from: deployer.address,
-    nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 2,
+    nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 1,
   });
 
+  const initializeData = AlgebraFactory.interface.encodeFunctionData('initialize', [poolDeployerAddress, deployer.address]);
   const proxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
-  const proxy = await proxyFactory.deploy(algebraFactoryImplementation.target, proxyAdmin.target, '0x'); // +1
+  const proxy = await proxyFactory.deploy(algebraFactoryImplementation.target, proxyAdmin.target, initializeData); // +1
   await proxy.waitForDeployment();
 
   const factory = AlgebraFactory.attach(proxy.target);
-  let tx = await factory.initialize(poolDeployerAddress); // +2
-  await tx.wait();
 
   const PoolDeployerFactory = await hre.ethers.getContractFactory('AlgebraPoolDeployer');
   const poolDeployer = await PoolDeployerFactory.deploy(factory.target);

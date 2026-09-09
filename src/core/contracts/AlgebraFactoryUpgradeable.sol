@@ -73,17 +73,19 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
     _disableInitializers();
   }
 
-  function initialize(address _poolDeployer) external initializer {
+  function initialize(address _poolDeployer, address _initOwner) external initializer {
     require(_poolDeployer != address(0));
+    require(_initOwner != address(0));
 
     __AccessControlEnumerable_init();
     __Ownable2Step_init();
+    _transferOwnership(_initOwner);
 
     poolDeployer = _poolDeployer;
     defaultTickspacing = Constants.INIT_DEFAULT_TICK_SPACING;
     defaultFee = Constants.INIT_DEFAULT_FEE;
 
-    _grantRole(POOLS_CREATOR_ROLE, msg.sender);
+    _grantRole(POOLS_CREATOR_ROLE, _initOwner);
 
     emit DefaultTickspacing(Constants.INIT_DEFAULT_TICK_SPACING);
     emit DefaultFee(Constants.INIT_DEFAULT_FEE);

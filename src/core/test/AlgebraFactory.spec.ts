@@ -31,7 +31,7 @@ describe('AlgebraFactoryUpgradeable', () => {
     });
 
     let factory = await createEmptyFactoryProxy();
-    await factory.initialize(poolDeployerAddress);
+    await factory.initialize(poolDeployerAddress, deployer.address);
 
     const poolDeployerFactory = await ethers.getContractFactory('AlgebraPoolDeployer');
     const poolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
@@ -65,20 +65,56 @@ describe('AlgebraFactoryUpgradeable', () => {
   it('fail if try initialize on implementation', async () => {
     const factoryFactory = await ethers.getContractFactory('AlgebraFactoryUpgradeable');
     const factoryImplementation = await factoryFactory.deploy();
-    await expect(factoryImplementation.initialize(poolDeployer.target)).to.be.revertedWith(
+    await expect(factoryImplementation.initialize(poolDeployer.target, wallet.address)).to.be.revertedWith(
       'Initializable: contract is already initialized'
     );
   });
 
   it('fail if try second initialize on proxy', async () => {
-    await expect(factory.initialize(poolDeployer.target)).to.be.revertedWith(
+    await expect(factory.initialize(poolDeployer.target, wallet.address)).to.be.revertedWith(
       'Initializable: contract is already initialized'
     );
   });
 
   it('fail if provide zero address like poolDeployer', async () => {
     const factory = await createEmptyFactoryProxy();
-    await expect(factory.initialize(ZERO_ADDRESS)).to.be.reverted;
+    await expect(factory.initialize(ZERO_ADDRESS, wallet.address)).to.be.reverted;
+  });
+
+  it('fail if provide zero address like initOwner', async () => {
+    const factory = await createEmptyFactoryProxy();
+    await expect(factory.initialize(poolDeployer.target, ZERO_ADDRESS)).to.be.reverted;
+  });
+
+  it('assigns ownership and initial roles to initOwner instead of caller', async () => {
+    const factory = await createEmptyFactoryProxy();
+    await factory.connect(other).initialize(poolDeployer.target, wallet.address);
+
+    const poolsCreatorRole = await factory.POOLS_CREATOR_ROLE();
+    const defaultAdminRole = await factory.DEFAULT_ADMIN_ROLE();
+
+    expect(await factory.owner()).to.eq(wallet.address);
+    expect(await factory.hasRole(poolsCreatorRole, wallet.address)).to.be.true;
+    expect(await factory.hasRole(defaultAdminRole, wallet.address)).to.be.true;
+    expect(await factory.hasRole(poolsCreatorRole, other.address)).to.be.false;
+    expect(await factory.hasRole(defaultAdminRole, other.address)).to.be.false;
+  });
+
+  it('initializes the proxy atomically during deployment', async () => {
+    const factoryFactory = await ethers.getContractFactory('AlgebraFactoryUpgradeable');
+    const factoryImplementation = await factoryFactory.deploy();
+    const proxyAdmin = await ethers.deployContract('ProxyAdmin');
+    const proxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+    const initializeData = factoryFactory.interface.encodeFunctionData('initialize', [poolDeployer.target, other.address]);
+    const proxy = await proxyFactory.deploy(factoryImplementation.target, proxyAdmin.target, initializeData);
+    const initializedFactory = factoryFactory.attach(proxy.target) as any as AlgebraFactoryUpgradeable;
+
+    expect(await initializedFactory.owner()).to.eq(other.address);
+    expect(await initializedFactory.poolDeployer()).to.eq(poolDeployer.target);
+    expect(await initializedFactory.hasRole(await initializedFactory.POOLS_CREATOR_ROLE(), other.address)).to.be.true;
+    await expect(initializedFactory.initialize(poolDeployer.target, wallet.address)).to.be.revertedWith(
+      'Initializable: contract is already initialized'
+    );
   });
 
   it('cannot create vault factory stub with zero algebra community vault address', async () => {
@@ -122,7 +158,7 @@ describe('AlgebraFactoryUpgradeable', () => {
 
   it('cannot deploy factory with incorrect poolDeployer', async () => {
     const factory = await createEmptyFactoryProxy();
-    await expect(factory.initialize(ZERO_ADDRESS)).to.be.reverted;
+    await expect(factory.initialize(ZERO_ADDRESS, wallet.address)).to.be.reverted;
   });
 
   describe('#setPoolDeployer', () => {

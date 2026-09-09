@@ -31,7 +31,7 @@ describe('AlgebraCustomPoolEntryPoint', () => {
     });
 
     const factory = await createEmptyFactoryProxy();
-    await factory.initialize(poolDeployerAddress);
+    await factory.initialize(poolDeployerAddress, deployer.address);
 
     const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
     const poolDeployer = await poolDeployerFactory.deploy(factory);
