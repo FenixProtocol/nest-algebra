@@ -1,7 +1,14 @@
-import { MaxUint256, ContractTransactionResponse, Wallet, ZeroAddress } from 'ethers';
+import { AbiCoder, MaxUint256, ContractTransactionResponse, Wallet, ZeroAddress } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { IAlgebraFactory, IWNativeToken, MockTimeNonfungiblePositionManager, MockTimeSwapRouter, TestERC20 } from '../typechain';
+import {
+  IAlgebraFactory,
+  IWNativeToken,
+  MockTimeNonfungiblePositionManager,
+  MockTimeSwapRouter,
+  ReentrantExactOutputToken,
+  TestERC20,
+} from '../typechain';
 import completeFixture from './shared/completeFixture';
 import { FeeAmount, TICK_SPACINGS } from './shared/constants';
 import { encodePriceSqrt } from './shared/encodePriceSqrt';
@@ -983,6 +990,32 @@ describe('SwapRouter', function () {
         return router.connect(trader).multicall(data, { value });
       }
 
+      async function setupReentrantExactOutputToken(): Promise<ReentrantExactOutputToken> {
+        const reentrantTokenFactory = await ethers.getContractFactory('ReentrantExactOutputToken');
+        const reentrantToken = (await reentrantTokenFactory.deploy(MaxUint256 / 2n)) as ReentrantExactOutputToken;
+        const reentrantTokenAddress = await reentrantToken.getAddress();
+
+        await reentrantToken.approve(nft, MaxUint256);
+        await reentrantToken.connect(trader).approve(router, MaxUint256);
+        await reentrantToken.transfer(trader.address, expandTo18Decimals(1_000_000));
+        await reentrantToken.transfer(reentrantTokenAddress, expandTo18Decimals(1_000_000));
+
+        await createPool(nft, wallet, reentrantTokenAddress, tokens[0].address);
+        await createPool(nft, wallet, reentrantTokenAddress, tokens[1].address);
+
+        return reentrantToken;
+      }
+
+      async function expectReentrancyGuardFailure(reentrantToken: ReentrantExactOutputToken) {
+        expect(await reentrantToken.attackAttempted()).to.be.eq(true);
+        expect(await reentrantToken.attackSucceeded()).to.be.eq(false);
+
+        const revertData = await reentrantToken.attackResult();
+        expect(revertData.slice(0, 10)).to.be.eq('0x08c379a0');
+        const [reason] = AbiCoder.defaultAbiCoder().decode(['string'], `0x${revertData.slice(10)}`);
+        expect(reason).to.be.eq('ReentrancyGuard: reentrant call');
+      }
+
       it('reverts if deadline passed', async () => {
         await expect(
           exactOutput(
@@ -1226,6 +1259,84 @@ describe('SwapRouter', function () {
               computePoolAddress(await factory.poolDeployer(), [tokens[1].address, tokens[0].address]),
               5
             );
+        });
+
+        describe('reentrancy protection', () => {
+          it('blocks exactOutputSingle reentrancy without corrupting the exactOutput result', async () => {
+            const reentrantToken = await setupReentrantExactOutputToken();
+            const reentrantTokenAddress = await reentrantToken.getAddress();
+            const routerAddress = await router.getAddress();
+
+            const nestedCall = router.interface.encodeFunctionData('exactOutputSingle', [
+              {
+                tokenIn: reentrantTokenAddress,
+                tokenOut: tokens[0].address,
+                deployer: ZeroAddress,
+                fee: FeeAmount.MEDIUM,
+                recipient: reentrantTokenAddress,
+                deadline: 1,
+                amountOut: 1,
+                amountInMaximum: 3,
+                limitSqrtPrice: 0,
+              },
+            ]);
+            await reentrantToken.configureAttack(routerAddress, nestedCall, false);
+
+            const params = {
+              path: encodePath([tokens[2].address, tokens[1].address, reentrantTokenAddress]),
+              recipient: trader.address,
+              deadline: 1,
+              amountOut: 1,
+              amountInMaximum: 5,
+            };
+            const inputBefore = await reentrantToken.balanceOf(trader.address);
+            const outputBefore = await tokens[2].balanceOf(trader.address);
+
+            expect(await router.connect(trader).exactOutput.staticCall(params)).to.be.eq(5);
+            await router.connect(trader).exactOutput(params);
+
+            await expectReentrancyGuardFailure(reentrantToken);
+            expect(await reentrantToken.balanceOf(trader.address)).to.be.eq(inputBefore - 5n);
+            expect(await tokens[2].balanceOf(trader.address)).to.be.eq(outputBefore + 1n);
+          });
+
+          it('blocks exactOutput reentrancy during exactOutputSingle', async () => {
+            const reentrantToken = await setupReentrantExactOutputToken();
+            const reentrantTokenAddress = await reentrantToken.getAddress();
+            const routerAddress = await router.getAddress();
+
+            const nestedCall = router.interface.encodeFunctionData('exactOutput', [
+              {
+                path: encodePath([tokens[0].address, reentrantTokenAddress]),
+                recipient: reentrantTokenAddress,
+                deadline: 1,
+                amountOut: 1,
+                amountInMaximum: 3,
+              },
+            ]);
+            await reentrantToken.configureAttack(routerAddress, nestedCall, false);
+
+            const params = {
+              tokenIn: reentrantTokenAddress,
+              tokenOut: tokens[1].address,
+              deployer: ZeroAddress,
+              fee: FeeAmount.MEDIUM,
+              recipient: trader.address,
+              deadline: 1,
+              amountOut: 1,
+              amountInMaximum: 3,
+              limitSqrtPrice: 0,
+            };
+            const inputBefore = await reentrantToken.balanceOf(trader.address);
+            const outputBefore = await tokens[1].balanceOf(trader.address);
+
+            expect(await router.connect(trader).exactOutputSingle.staticCall(params)).to.be.eq(3);
+            await router.connect(trader).exactOutputSingle(params);
+
+            await expectReentrancyGuardFailure(reentrantToken);
+            expect(await reentrantToken.balanceOf(trader.address)).to.be.eq(inputBefore - 3n);
+            expect(await tokens[1].balanceOf(trader.address)).to.be.eq(outputBefore + 1n);
+          });
         });
       });
 

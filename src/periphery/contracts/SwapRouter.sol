@@ -5,6 +5,7 @@ import '@cryptoalgebra/integral-core/contracts/libraries/SafeCast.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import './interfaces/ISwapRouter.sol';
 import './base/PeripheryImmutableState.sol';
@@ -25,7 +26,8 @@ contract SwapRouter is
     PeripheryValidation,
     PeripheryPaymentsWithFee,
     Multicall,
-    SelfPermit
+    SelfPermit,
+    ReentrancyGuard
 {
     using Path for bytes;
     using SafeCast for uint256;
@@ -209,7 +211,7 @@ contract SwapRouter is
     /// @inheritdoc ISwapRouter
     function exactOutputSingle(
         ExactOutputSingleParams calldata params
-    ) external payable override checkDeadline(params.deadline) returns (uint256 amountIn) {
+    ) external payable override nonReentrant checkDeadline(params.deadline) returns (uint256 amountIn) {
         // avoid an SLOAD by using the swap return data
         amountIn = exactOutputInternal(
             params.amountOut,
@@ -225,7 +227,7 @@ contract SwapRouter is
     /// @inheritdoc ISwapRouter
     function exactOutput(
         ExactOutputParams calldata params
-    ) external payable override checkDeadline(params.deadline) returns (uint256 amountIn) {
+    ) external payable override nonReentrant checkDeadline(params.deadline) returns (uint256 amountIn) {
         // it's okay that the payer is fixed to msg.sender here, as they're only paying for the "final" exact output
         // swap, which happens first, and subsequent swaps are paid for within nested callback frames
         exactOutputInternal(
