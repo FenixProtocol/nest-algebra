@@ -24,10 +24,11 @@ contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState {
     using SafeCast for uint256;
     using PoolTicksCounter for IAlgebraPool;
 
-    /// @dev Transient storage variable used to check a safety condition in exact output swaps.
-    uint256 private amountOutCached;
-
-    constructor(address _factory, address _WNativeToken, address _poolDeployer) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
+    constructor(
+        address _factory,
+        address _WNativeToken,
+        address _poolDeployer
+    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
 
     function getPool(address deployer, address tokenA, address tokenB) private view returns (IAlgebraPool) {
         return
@@ -62,8 +63,14 @@ contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState {
                 revert(ptr, 224)
             }
         } else {
-            // if the cache has been populated, ensure that the full output amount has been received
-            if (amountOutCached != 0) require(amountReceived == amountOutCached, 'Not received full amountOut');
+            // no-limit exact-output quotes append the requested output to their callback data
+            if (path.length == 92) {
+                uint256 amountOutExpected;
+                assembly ('memory-safe') {
+                    amountOutExpected := mload(add(path, 92))
+                }
+                require(amountReceived == amountOutExpected, 'Not received full amountOut');
+            }
             assembly {
                 let ptr := mload(0x40)
                 mstore(ptr, amountReceived)
@@ -237,10 +244,10 @@ contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState {
         bool zeroToOne = params.tokenIn < params.tokenOut;
         IAlgebraPool pool = getPool(params.deployer, params.tokenIn, params.tokenOut);
 
-        // if no price limit has been specified, cache the output amount for comparison in the swap callback
-        if (params.limitSqrtPrice == 0) amountOutCached = params.amount;
         uint256 gasBefore = gasleft();
-        bytes memory data = abi.encodePacked(params.tokenOut, params.deployer, params.tokenIn);
+        bytes memory data = params.limitSqrtPrice == 0
+            ? abi.encodePacked(params.tokenOut, params.deployer, params.tokenIn, params.amount)
+            : abi.encodePacked(params.tokenOut, params.deployer, params.tokenIn);
         try
             pool.swap(
                 address(this), // address(0) might cause issues with some tokens
@@ -253,7 +260,6 @@ contract QuoterV2 is IQuoterV2, IAlgebraSwapCallback, PeripheryImmutableState {
             )
         {} catch (bytes memory reason) {
             gasEstimate = gasBefore - gasleft();
-            if (params.limitSqrtPrice == 0) delete amountOutCached; // clear cache
             return handleRevert(reason, pool, gasEstimate);
         }
     }

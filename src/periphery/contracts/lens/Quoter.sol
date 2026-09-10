@@ -23,10 +23,11 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
     using Path for bytes;
     using SafeCast for uint256;
 
-    /// @dev Transient storage variable used to check a safety condition in exact output swaps.
-    uint256 private amountOutCached;
-
-    constructor(address _factory, address _WNativeToken, address _poolDeployer) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
+    constructor(
+        address _factory,
+        address _WNativeToken,
+        address _poolDeployer
+    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
 
     function getPool(address deployer, address tokenA, address tokenB) private view returns (IAlgebraPool) {
         return
@@ -58,8 +59,14 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
                 revert(ptr, 64)
             }
         } else {
-            // if the cache has been populated, ensure that the full output amount has been received
-            if (amountOutCached != 0) require(amountReceived == amountOutCached, 'Not received full amountOut');
+            // no-limit exact-output quotes append the requested output to their callback data
+            if (path.length == 92) {
+                uint256 amountOutExpected;
+                assembly ('memory-safe') {
+                    amountOutExpected := mload(add(path, 92))
+                }
+                require(amountReceived == amountOutExpected, 'Not received full amountOut');
+            }
             assembly {
                 let ptr := mload(0x40)
                 mstore(ptr, amountToPay)
@@ -139,8 +146,6 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
     ) public override returns (uint256 amountIn, uint16 fee) {
         bool zeroToOne = tokenIn < tokenOut;
 
-        // if no price limit has been specified, cache the output amount for comparison in the swap callback
-        if (limitSqrtPrice == 0) amountOutCached = amountOut;
         try
             getPool(deployer, tokenIn, tokenOut).swap(
                 address(this), // address(0) might cause issues with some tokens
@@ -149,10 +154,11 @@ contract Quoter is IQuoter, IAlgebraSwapCallback, PeripheryImmutableState {
                 limitSqrtPrice == 0
                     ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
                     : limitSqrtPrice,
-                abi.encodePacked(tokenOut, deployer, tokenIn)
+                limitSqrtPrice == 0
+                    ? abi.encodePacked(tokenOut, deployer, tokenIn, amountOut)
+                    : abi.encodePacked(tokenOut, deployer, tokenIn)
             )
         {} catch (bytes memory reason) {
-            if (limitSqrtPrice == 0) delete amountOutCached;
             (amountIn, fee) = parseRevertReason(reason);
         }
     }
