@@ -59,7 +59,7 @@ const v3CoreFactoryFixture: () => Promise<IAlgebraFactory> = async () => {
   const _factory = (await v3FactoryFactory.deploy(poolDeployerAddress)) as any as IAlgebraFactory;
 
   const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
-  const poolDeployer = await poolDeployerFactory.deploy(_factory);
+  await poolDeployerFactory.deploy(_factory);
   const basePluginFactory = await ethers.getContractFactory(BASE_PLUGIN__ABI, BASE_PLUGIN_BYTECODE);
 
   const pluginContractFactory = await ethers.getContractFactory(PLUGIN_FACTORY_ABI, PLUGIN_FACTORY_BYTECODE);
@@ -77,11 +77,10 @@ export const v3RouterFixture: () => Promise<{
   factory: IAlgebraFactory;
   router: MockTimeSwapRouter;
 }> = async () => {
-  const [dep] = await ethers.getSigners();
   const { wnative } = await wnativeFixture();
   const factory = await v3CoreFactoryFixture();
   const routerFactory = await ethers.getContractFactory(SWAPROUTER_ABI, SWAPROUTER_BYTECODE);
-  const router = (await routerFactory.deploy(dep.address, factory, wnative, await factory.poolDeployer())) as any as MockTimeSwapRouter;
+  const router = (await routerFactory.deploy(factory, wnative, await factory.poolDeployer())) as any as MockTimeSwapRouter;
 
   return { factory, wnative, router };
 };

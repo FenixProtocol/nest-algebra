@@ -108,6 +108,7 @@ contract NonfungiblePositionManager is
             address operator,
             address token0,
             address token1,
+            address deployer,
             int24 tickLower,
             int24 tickUpper,
             uint128 liquidity,
@@ -130,6 +131,7 @@ contract NonfungiblePositionManager is
             position.operator,
             poolKey.token0,
             poolKey.token1,
+            poolKey.deployer,
             tickLower,
             tickUpper,
             liquidity,
@@ -147,15 +149,23 @@ contract NonfungiblePositionManager is
         external
         payable
         override
+        nonReentrant
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
     {
+        return _mintAlgebraPosition(params);
+    }
+
+    function _mintAlgebraPosition(
+        MintParams memory params
+    ) private returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         IAlgebraPool pool;
         uint128 liquidityDesired;
         (liquidityDesired, liquidity, amount0, amount1, pool) = addLiquidity(
             AddLiquidityParams({
                 token0: params.token0,
                 token1: params.token1,
+                deployer: params.deployer,
                 recipient: address(this),
                 tickLower: params.tickLower,
                 tickUpper: params.tickUpper,
@@ -175,10 +185,9 @@ contract NonfungiblePositionManager is
             params.tickUpper
         );
 
-        // idempotent set
         uint80 poolId = _cachePoolKey(
             address(pool),
-            PoolAddress.PoolKey({token0: params.token0, token1: params.token1})
+            PoolAddress.getPoolKey(params.deployer, params.token0, params.token1)
         );
 
         _positions[tokenId] = Position({
@@ -208,7 +217,8 @@ contract NonfungiblePositionManager is
     }
 
     function _getPoolById(uint80 poolId) private view returns (address) {
-        return PoolAddress.computeAddress(poolDeployer, _poolIdToPoolKey[poolId]);
+        PoolAddress.PoolKey storage poolKey = _poolIdToPoolKey[poolId];
+        return PoolAddress.getPool(factory, poolKey);
     }
 
     function _updateUncollectedFees(
@@ -252,6 +262,7 @@ contract NonfungiblePositionManager is
         external
         payable
         override
+        nonReentrant
         checkDeadline(params.deadline)
         returns (uint128 liquidity, uint256 amount0, uint256 amount1)
     {
@@ -268,6 +279,7 @@ contract NonfungiblePositionManager is
             AddLiquidityParams({
                 token0: poolKey.token0,
                 token1: poolKey.token1,
+                deployer: poolKey.deployer,
                 tickLower: tickLower,
                 tickUpper: tickUpper,
                 amount0Desired: params.amount0Desired,

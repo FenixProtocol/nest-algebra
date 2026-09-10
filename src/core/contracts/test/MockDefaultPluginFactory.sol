@@ -13,4 +13,25 @@ contract MockDefaultPluginFactory is IAlgebraPluginFactory {
     plugin = address(new MockPoolPlugin(pool));
     pluginsForPools[pool] = plugin;
   }
+
+  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address plugin) {
+    plugin = address(new MockPoolPlugin(pool));
+    pluginsForPools[pool] = plugin;
+  }
+
+  function afterCreatePoolHook(address, address, address) external override {}
+
+  function createCustomPool(
+    address entryPoint,
+    address creator,
+    address tokenA,
+    address tokenB,
+    bytes calldata data
+  ) external returns (address pool) {
+    (bool success, bytes memory result) = entryPoint.call(
+      abi.encodeWithSignature('createCustomPool(address,address,address,address,bytes)', address(this), creator, tokenA, tokenB, data)
+    );
+    require(success);
+    pool = abi.decode(result, (address));
+  }
 }

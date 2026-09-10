@@ -39,7 +39,7 @@ async function factoryFixture(): Promise<FactoryFixture> {
   });
 
   const factory = await createEmptyFactoryProxy();
-  await factory.initialize(poolDeployerAddress);
+  await factory.initialize(poolDeployerAddress, deployer.address);
 
   const poolDeployerFactory = await ethers.getContractFactory('AlgebraPoolDeployer');
   const poolDeployer = (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;

@@ -22,13 +22,18 @@ abstract contract LiquidityManagement is IAlgebraMintCallback, PeripheryImmutabl
     using PoolInteraction for IAlgebraPool;
     struct MintCallbackData {
         PoolAddress.PoolKey poolKey;
+        address deployer;
         address payer;
     }
 
     /// @inheritdoc IAlgebraMintCallback
     function algebraMintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external override {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
-        CallbackValidation.verifyCallback(poolDeployer, decoded.poolKey);
+        if (decoded.deployer == address(0)) {
+            CallbackValidation.verifyCallbackFromFactory(factory, decoded.poolKey.token0, decoded.poolKey.token1);
+        } else {
+            CallbackValidation.verifyCustomCallbackFromFactory(factory, decoded.deployer, decoded.poolKey.token0, decoded.poolKey.token1);
+        }
 
         if (amount0Owed > 0) pay(decoded.poolKey.token0, decoded.payer, msg.sender, amount0Owed);
         if (amount1Owed > 0) pay(decoded.poolKey.token1, decoded.payer, msg.sender, amount1Owed);
@@ -37,6 +42,7 @@ abstract contract LiquidityManagement is IAlgebraMintCallback, PeripheryImmutabl
     struct AddLiquidityParams {
         address token0;
         address token1;
+        address deployer;
         address recipient;
         int24 tickLower;
         int24 tickUpper;
@@ -53,9 +59,9 @@ abstract contract LiquidityManagement is IAlgebraMintCallback, PeripheryImmutabl
         internal
         returns (uint128 liquidity, uint128 actualLiquidity, uint256 amount0, uint256 amount1, IAlgebraPool pool)
     {
-        PoolAddress.PoolKey memory poolKey = PoolAddress.PoolKey({token0: params.token0, token1: params.token1});
+        PoolAddress.PoolKey memory poolKey = PoolAddress.getPoolKey(params.deployer, params.token0, params.token1);
 
-        pool = IAlgebraPool(PoolAddress.computeAddress(poolDeployer, poolKey));
+        pool = IAlgebraPool(PoolAddress.getPool(factory, poolKey));
 
         // compute the liquidity amount
         {
@@ -78,7 +84,7 @@ abstract contract LiquidityManagement is IAlgebraMintCallback, PeripheryImmutabl
             params.tickLower,
             params.tickUpper,
             liquidity,
-            abi.encode(MintCallbackData({poolKey: poolKey, payer: msg.sender}))
+            abi.encode(MintCallbackData({poolKey: poolKey, deployer: params.deployer, payer: msg.sender}))
         );
 
         require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');

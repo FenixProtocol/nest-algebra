@@ -2,7 +2,6 @@
 
 # QuoterV2
 
-
 Algebra Integral 1.0 QuoterV2
 
 Allows getting the expected amount out or amount in for a given swap without executing the swap
@@ -20,8 +19,6 @@ https://github.com/Uniswap/v3-periphery*
 ```solidity
 constructor(address _factory, address _WNativeToken, address _poolDeployer) public
 ```
-
-
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -53,13 +50,13 @@ amount0Delta and amount1Delta can both be 0 if no tokens were swapped.*
 ```solidity
 function quoteExactInputSingle(struct IQuoterV2.QuoteExactInputSingleParams params) public returns (uint256 amountOut, uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate, uint16 fee)
 ```
-**Selector**: `0x5e5e6e0f`
+**Selector**: `0xe94764c4`
 
 Returns the amount out received for a given exact input but for a swap of a single pool
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| params | struct IQuoterV2.QuoteExactInputSingleParams | The params for the quote, encoded as `QuoteExactInputSingleParams` tokenIn The token being swapped in tokenOut The token being swapped out amountIn The desired input amount limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap |
+| params | struct IQuoterV2.QuoteExactInputSingleParams | The params for the quote, encoded as `QuoteExactInputSingleParams` tokenIn The token being swapped in tokenOut The token being swapped out deployer The custom pool deployer, or address(0) for classic pools amountIn The desired input amount limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap |
 
 **Returns:**
 
@@ -102,13 +99,13 @@ Returns the amount out received for a given exact input swap without executing t
 ```solidity
 function quoteExactOutputSingle(struct IQuoterV2.QuoteExactOutputSingleParams params) public returns (uint256 amountOut, uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate, uint16 fee)
 ```
-**Selector**: `0x5877c9b9`
+**Selector**: `0x62086e24`
 
 Returns the amount in required to receive the given exact output amount but for a swap of a single pool
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| params | struct IQuoterV2.QuoteExactOutputSingleParams | The params for the quote, encoded as `QuoteExactOutputSingleParams` tokenIn The token being swapped in tokenOut The token being swapped out amountOut The desired output amount limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap |
+| params | struct IQuoterV2.QuoteExactOutputSingleParams | The params for the quote, encoded as `QuoteExactOutputSingleParams` tokenIn The token being swapped in tokenOut The token being swapped out deployer The custom pool deployer, or address(0) for classic pools amountOut The desired output amount limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap |
 
 **Returns:**
 

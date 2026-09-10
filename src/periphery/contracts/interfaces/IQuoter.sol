@@ -20,12 +20,14 @@ interface IQuoter {
     /// @notice Returns the amount out received for a given exact input but for a swap of a single pool
     /// @param tokenIn The token being swapped in
     /// @param tokenOut The token being swapped out
+    /// @param deployer The custom pool deployer, or address(0) for classic pools
     /// @param amountIn The desired input amount
     /// @param limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap
     /// @return amountOut The amount of `tokenOut` that would be received
     function quoteExactInputSingle(
         address tokenIn,
         address tokenOut,
+        address deployer,
         uint256 amountIn,
         uint160 limitSqrtPrice
     ) external returns (uint256 amountOut, uint16 fee);
@@ -41,12 +43,14 @@ interface IQuoter {
     /// @notice Returns the amount in required to receive the given exact output amount but for a swap of a single pool
     /// @param tokenIn The token being swapped in
     /// @param tokenOut The token being swapped out
+    /// @param deployer The custom pool deployer, or address(0) for classic pools
     /// @param amountOut The desired output amount
     /// @param limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap
     /// @return amountIn The amount required as the input for the swap in order to receive `amountOut`
     function quoteExactOutputSingle(
         address tokenIn,
         address tokenOut,
+        address deployer,
         uint256 amountOut,
         uint160 limitSqrtPrice
     ) external returns (uint256 amountIn, uint16 fee);

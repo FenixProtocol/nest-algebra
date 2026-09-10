@@ -71,6 +71,7 @@ interface INonfungiblePositionManager is
     /// @return operator The address that is approved for spending
     /// @return token0 The address of the token0 for a specific pool
     /// @return token1 The address of the token1 for a specific pool
+    /// @return deployer The custom deployer identifier, address(0) for classic pools
     /// @return tickLower The lower end of the tick range for the position
     /// @return tickUpper The higher end of the tick range for the position
     /// @return liquidity The liquidity of the position
@@ -88,6 +89,7 @@ interface INonfungiblePositionManager is
             address operator,
             address token0,
             address token1,
+            address deployer,
             int24 tickLower,
             int24 tickUpper,
             uint128 liquidity,
@@ -100,6 +102,7 @@ interface INonfungiblePositionManager is
     struct MintParams {
         address token0;
         address token1;
+        address deployer;
         int24 tickLower;
         int24 tickUpper;
         uint256 amount0Desired;
@@ -113,6 +116,7 @@ interface INonfungiblePositionManager is
     /// @notice Creates a new position wrapped in a NFT
     /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
     /// a method does not exist, i.e. the pool is assumed to be initialized.
+    /// @dev Use address(0) as deployer for classic pools
     /// @dev If native token is used as input, this function should be accompanied by a `refundNativeToken` in multicall to avoid potential loss of native tokens
     /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
     /// @return tokenId The ID of the token that represents the minted position

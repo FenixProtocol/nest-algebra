@@ -2,7 +2,6 @@
 
 # ISwapRouter
 
-
 Router token swapping functionality
 
 Functions for swapping tokens via Algebra
@@ -15,12 +14,11 @@ https://github.com/Uniswap/v3-periphery*
 ## Structs
 ### ExactInputSingleParams
 
-
-
 ```solidity
 struct ExactInputSingleParams {
   address tokenIn;
   address tokenOut;
+  address deployer;
   address recipient;
   uint256 deadline;
   uint256 amountIn;
@@ -30,8 +28,6 @@ struct ExactInputSingleParams {
 ```
 
 ### ExactInputParams
-
-
 
 ```solidity
 struct ExactInputParams {
@@ -45,12 +41,11 @@ struct ExactInputParams {
 
 ### ExactOutputSingleParams
 
-
-
 ```solidity
 struct ExactOutputSingleParams {
   address tokenIn;
   address tokenOut;
+  address deployer;
   address recipient;
   uint256 deadline;
   uint256 amountOut;
@@ -60,8 +55,6 @@ struct ExactOutputSingleParams {
 ```
 
 ### ExactOutputParams
-
-
 
 ```solidity
 struct ExactOutputParams {
@@ -73,14 +66,13 @@ struct ExactOutputParams {
 }
 ```
 
-
 ## Functions
 ### exactInputSingle
 
 ```solidity
 function exactInputSingle(struct ISwapRouter.ExactInputSingleParams params) external payable returns (uint256 amountOut)
 ```
-**Selector**: `0xbc651188`
+**Selector**: `0x1679c792`
 
 Swaps &#x60;amountIn&#x60; of one token for as much as possible of another token
 
@@ -118,7 +110,7 @@ Swaps &#x60;amountIn&#x60; of one token for as much as possible of another along
 ```solidity
 function exactOutputSingle(struct ISwapRouter.ExactOutputSingleParams params) external payable returns (uint256 amountIn)
 ```
-**Selector**: `0x61d4d5b3`
+**Selector**: `0x1764babc`
 
 Swaps as little as possible of one token for &#x60;amountOut&#x60; of another token
 
@@ -160,7 +152,7 @@ Swaps as little as possible of one token for &#x60;amountOut&#x60; of another al
 ```solidity
 function exactInputSingleSupportingFeeOnTransferTokens(struct ISwapRouter.ExactInputSingleParams params) external payable returns (uint256 amountOut)
 ```
-**Selector**: `0xb87d2524`
+**Selector**: `0x6eb38adc`
 
 Swaps &#x60;amountIn&#x60; of one token for as much as possible of another along the specified path
 

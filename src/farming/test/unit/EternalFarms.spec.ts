@@ -1958,6 +1958,7 @@ describe('unit/EternalFarms', () => {
         const swapData = {
           tokenIn: tokenReentrant,
           tokenOut: context.token1,
+          deployer: ZERO_ADDRESS,
           amountIn: 10,
           amountOutMinimum: 0,
           recipient: lpUser0.address,
