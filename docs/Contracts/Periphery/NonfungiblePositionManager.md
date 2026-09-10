@@ -2,7 +2,6 @@
 
 # NonfungiblePositionManager
 
-
 Algebra Integral 1.0 NFT positions
 
 Wraps Algebra positions in the ERC721 non-fungible token interface
@@ -18,17 +17,12 @@ https://github.com/Uniswap/v3-periphery*
 modifier isAuthorizedForToken(uint256 tokenId)
 ```
 
-
-
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | tokenId | uint256 |  |
 
-
 ## Structs
 ### Position
-
-
 
 ```solidity
 struct Position {
@@ -45,15 +39,12 @@ struct Position {
 }
 ```
 
-
 ## Public variables
 ### NONFUNGIBLE_POSITION_MANAGER_ADMINISTRATOR_ROLE
 ```solidity
 bytes32 constant NONFUNGIBLE_POSITION_MANAGER_ADMINISTRATOR_ROLE = 0xff0e0466f109fcf4f5660899d8847c592e1e8dea30ffbe040704b23ad381d762
 ```
 **Selector**: `0xb227aa79`
-
-
 
 *Developer note: The role which has the right to change the farming center address*
 
@@ -65,7 +56,6 @@ address farmingCenter
 
 Returns the address of currently connected farming, if any
 
-
 ### farmingApprovals
 ```solidity
 mapping(uint256 => address) farmingApprovals
@@ -73,7 +63,6 @@ mapping(uint256 => address) farmingApprovals
 **Selector**: `0x2d0b22de`
 
 Returns the address of farming that is approved for this token, if any
-
 
 ### tokenFarmedIn
 ```solidity
@@ -83,16 +72,12 @@ mapping(uint256 => address) tokenFarmedIn
 
 Returns the address of farming in which this token is farmed, if any
 
-
-
 ## Functions
 ### constructor
 
 ```solidity
 constructor(address _factory, address _WNativeToken, address _tokenDescriptor_, address _poolDeployer) public
 ```
-
-
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -104,7 +89,7 @@ constructor(address _factory, address _WNativeToken, address _tokenDescriptor_, 
 ### positions
 
 ```solidity
-function positions(uint256 tokenId) external view returns (uint88 nonce, address operator, address token0, address token1, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)
+function positions(uint256 tokenId) external view returns (uint88 nonce, address operator, address token0, address token1, address deployer, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128, uint128 tokensOwed0, uint128 tokensOwed1)
 ```
 **Selector**: `0x99fbab88`
 
@@ -124,6 +109,7 @@ Returns the position information associated with a given token ID.
 | operator | address | The address that is approved for spending |
 | token0 | address | The address of the token0 for a specific pool |
 | token1 | address | The address of the token1 for a specific pool |
+| deployer | address | The custom deployer identifier, address(0) for classic pools |
 | tickLower | int24 | The lower end of the tick range for the position |
 | tickUpper | int24 | The higher end of the tick range for the position |
 | liquidity | uint128 | The liquidity of the position |
@@ -137,12 +123,13 @@ Returns the position information associated with a given token ID.
 ```solidity
 function mint(struct INonfungiblePositionManager.MintParams params) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
 ```
-**Selector**: `0x9cc1a283`
+**Selector**: `0xfe3f3be7`
 
 Creates a new position wrapped in a NFT
 
 *Developer note: Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
 a method does not exist, i.e. the pool is assumed to be initialized.
+Use address(0) as deployer for classic pools
 If native token is used as input, this function should be accompanied by a &#x60;refundNativeToken&#x60; in multicall to avoid potential loss of native tokens*
 
 | Name | Type | Description |
@@ -288,8 +275,6 @@ function tokenURI(uint256 tokenId) public view returns (string)
 ```
 **Selector**: `0xc87b56dd`
 
-
-
 *Developer note: Returns the Uniform Resource Identifier (URI) for &#x60;tokenId&#x60; token.*
 
 | Name | Type | Description |
@@ -308,8 +293,6 @@ function tokenURI(uint256 tokenId) public view returns (string)
 function getApproved(uint256 tokenId) public view returns (address)
 ```
 **Selector**: `0x081812fc`
-
-
 
 *Developer note: Returns the account approved for &#x60;tokenId&#x60; token.
 

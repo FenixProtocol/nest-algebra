@@ -2,7 +2,6 @@
 
 # Quoter
 
-
 Algebra Integral 1.0 Quoter
 
 Allows getting the expected amount out or amount in for a given swap without executing the swap
@@ -20,8 +19,6 @@ https://github.com/Uniswap/v3-periphery*
 ```solidity
 constructor(address _factory, address _WNativeToken, address _poolDeployer) public
 ```
-
-
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -51,9 +48,9 @@ amount0Delta and amount1Delta can both be 0 if no tokens were swapped.*
 ### quoteExactInputSingle
 
 ```solidity
-function quoteExactInputSingle(address tokenIn, address tokenOut, uint256 amountIn, uint160 limitSqrtPrice) public returns (uint256 amountOut, uint16 fee)
+function quoteExactInputSingle(address tokenIn, address tokenOut, address deployer, uint256 amountIn, uint160 limitSqrtPrice) public returns (uint256 amountOut, uint16 fee)
 ```
-**Selector**: `0x2d9ebd1d`
+**Selector**: `0x57028211`
 
 Returns the amount out received for a given exact input but for a swap of a single pool
 
@@ -61,6 +58,7 @@ Returns the amount out received for a given exact input but for a swap of a sing
 | ---- | ---- | ----------- |
 | tokenIn | address | The token being swapped in |
 | tokenOut | address | The token being swapped out |
+| deployer | address | The custom pool deployer, or address(0) for classic pools |
 | amountIn | uint256 | The desired input amount |
 | limitSqrtPrice | uint160 | The price limit of the pool that cannot be exceeded by the swap |
 
@@ -95,9 +93,9 @@ Returns the amount out received for a given exact input swap without executing t
 ### quoteExactOutputSingle
 
 ```solidity
-function quoteExactOutputSingle(address tokenIn, address tokenOut, uint256 amountOut, uint160 limitSqrtPrice) public returns (uint256 amountIn, uint16 fee)
+function quoteExactOutputSingle(address tokenIn, address tokenOut, address deployer, uint256 amountOut, uint160 limitSqrtPrice) public returns (uint256 amountIn, uint16 fee)
 ```
-**Selector**: `0x9e73c81d`
+**Selector**: `0x719c8b31`
 
 Returns the amount in required to receive the given exact output amount but for a swap of a single pool
 
@@ -105,6 +103,7 @@ Returns the amount in required to receive the given exact output amount but for 
 | ---- | ---- | ----------- |
 | tokenIn | address | The token being swapped in |
 | tokenOut | address | The token being swapped out |
+| deployer | address | The custom pool deployer, or address(0) for classic pools |
 | amountOut | uint256 | The desired output amount |
 | limitSqrtPrice | uint160 | The price limit of the pool that cannot be exceeded by the swap |
 

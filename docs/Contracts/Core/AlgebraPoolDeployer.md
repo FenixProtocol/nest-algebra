@@ -2,12 +2,11 @@
 
 # AlgebraPoolDeployer
 
-
 Algebra pool deployer
 
 Is used by AlgebraFactory to deploy pools
 
-*Developer note: Version: Algebra Integral 1.0*
+*Developer note: Version: Algebra Integral 1.2.2*
 
 **Inherits:** [IAlgebraPoolDeployer](interfaces/IAlgebraPoolDeployer.md)
 
@@ -17,8 +16,6 @@ Is used by AlgebraFactory to deploy pools
 ```solidity
 constructor(address _factory) public
 ```
-
-
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -47,11 +44,9 @@ Get the parameters to be used in constructing the pool, set transiently during p
 ### deploy
 
 ```solidity
-function deploy(address plugin, address token0, address token1) external returns (address pool)
+function deploy(address plugin, address token0, address token1, address customDeployer) external returns (address pool)
 ```
-**Selector**: `0xd9181cd3`
-
-
+**Selector**: `0xfd82b73a`
 
 *Developer note: Deploys a pool with the given parameters by transiently setting the parameters in cache.*
 
@@ -60,6 +55,7 @@ function deploy(address plugin, address token0, address token1) external returns
 | plugin | address | The pool associated plugin (if any) |
 | token0 | address | The first token of the pool by address sort order |
 | token1 | address | The second token of the pool by address sort order |
+| customDeployer | address | The custom pool deployer address used in the salt, or address(0) for classic pools |
 
 **Returns:**
 

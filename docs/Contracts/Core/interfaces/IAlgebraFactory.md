@@ -2,14 +2,10 @@
 
 # IAlgebraFactory
 
-
 The interface for the Algebra Factory
-
-
 
 *Developer note: Credit to Uniswap Labs under GPL-2.0-or-later license:
 https://github.com/Uniswap/v3-core/tree/main/contracts/interfaces*
-
 
 ## Events
 ### RenounceOwnershipStart
@@ -59,6 +55,21 @@ Emitted when a pool is created
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
+| token0 | address | The first token of the pool by address sort order |
+| token1 | address | The second token of the pool by address sort order |
+| pool | address | The address of the created pool |
+
+### CustomPool
+
+```solidity
+event CustomPool(address deployer, address token0, address token1, address pool)
+```
+
+Emitted when a custom pool is created
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| deployer | address | The custom pool deployer address |
 | token0 | address | The first token of the pool by address sort order |
 | token1 | address | The second token of the pool by address sort order |
 | pool | address | The address of the created pool |
@@ -135,6 +146,17 @@ Emitted when the pools creation mode is changed
 | ---- | ---- | ----------- |
 | mode_ | bool | The new pools creation mode |
 
+### PoolDeployer
+
+```solidity
+event PoolDeployer(address poolDeployerAddress)
+```
+
+Emitted when poolDeployer is changed
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| poolDeployerAddress | address | The pool deployer address |
 
 ## Functions
 ### POOLS_ADMINISTRATOR_ROLE
@@ -160,6 +182,21 @@ function POOLS_CREATOR_ROLE() external view returns (bytes32)
 **Selector**: `0x6e1433dc`
 
 role that can create pools when public pool creation is disabled
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | bytes32 | The hash corresponding to this role |
+
+### CUSTOM_POOL_DEPLOYER
+
+```solidity
+function CUSTOM_POOL_DEPLOYER() external view returns (bytes32)
+```
+**Selector**: `0x07810754`
+
+role that can call &#x60;createCustomPool&#x60;
 
 **Returns:**
 
@@ -357,6 +394,27 @@ Deterministically computes the pool address given the token0 and token1
 | ---- | ---- | ----------- |
 | pool | address | The contract address of the Algebra pool |
 
+### computeCustomPoolAddress
+
+```solidity
+function computeCustomPoolAddress(address customDeployer, address token0, address token1) external view returns (address customPool)
+```
+**Selector**: `0x1ba89df4`
+
+Deterministically computes a custom pool address for a custom deployer and token pair
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customDeployer | address | The custom pool deployer identifier used in the CREATE2 salt |
+| token0 | address | first token |
+| token1 | address | second token |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customPool | address | The contract address of the Algebra custom pool |
+
 ### poolByPair
 
 ```solidity
@@ -378,6 +436,46 @@ Returns the pool address for a given pair of tokens, or address 0 if it does not
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | pool | address | The pool address |
+
+### customPoolByPair
+
+```solidity
+function customPoolByPair(address customDeployer, address tokenA, address tokenB) external view returns (address customPool)
+```
+**Selector**: `0x23da36cc`
+
+Returns the custom pool address for a custom deployer and pair of tokens, or address 0 if it does not exist
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customDeployer | address | The custom pool deployer identifier |
+| tokenA | address | The contract address of either token0 or token1 |
+| tokenB | address | The contract address of the other token |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customPool | address | The custom pool address |
+
+### deployerByPool
+
+```solidity
+function deployerByPool(address pool) external view returns (address deployer)
+```
+**Selector**: `0x980fc5b7`
+
+Returns the custom deployer for a pool, or address 0 for classic pools and unknown pools
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| pool | address | The pool address |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| deployer | address | The custom pool deployer address |
 
 ### POOL_INIT_CODE_HASH
 
@@ -402,8 +500,6 @@ returns keccak256 of AlgebraPool init bytecode.
 function renounceOwnershipStartTimestamp() external view returns (uint256 timestamp)
 ```
 **Selector**: `0x084bfff9`
-
-
 
 **Returns:**
 
@@ -434,14 +530,35 @@ The call will revert if the pool already exists or the token arguments are inval
 | ---- | ---- | ----------- |
 | pool | address | The address of the newly created pool |
 
+### createCustomPool
+
+```solidity
+function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB, bytes data) external returns (address customPool)
+```
+**Selector**: `0xdbbf3db4`
+
+Creates a custom pool for the given two tokens using &#x60;customDeployer&#x60;
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customDeployer | address | The custom pool deployer identifier, also used for custom pool address calculation |
+| creator | address | The initiator of custom pool creation |
+| tokenA | address | One of the two tokens in the desired pool |
+| tokenB | address | The other of the two tokens in the desired pool |
+| data | bytes | Additional data for plugin creation |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customPool | address | The address of the newly created custom pool |
+
 ### setIsPublicPoolCreationMode
 
 ```solidity
 function setIsPublicPoolCreationMode(bool mode_) external
 ```
 **Selector**: `0x5d2493ab`
-
-
 
 *Developer note: updates pools creation mode*
 
@@ -456,8 +573,6 @@ function setDefaultCommunityFee(uint16 newDefaultCommunityFee) external
 ```
 **Selector**: `0x8d5a8711`
 
-
-
 *Developer note: updates default community fee for new pools*
 
 | Name | Type | Description |
@@ -470,8 +585,6 @@ function setDefaultCommunityFee(uint16 newDefaultCommunityFee) external
 function setDefaultFee(uint16 newDefaultFee) external
 ```
 **Selector**: `0x77326584`
-
-
 
 *Developer note: updates default fee for new pools*
 
@@ -486,8 +599,6 @@ function setDefaultTickspacing(int24 newDefaultTickspacing) external
 ```
 **Selector**: `0xf09489ac`
 
-
-
 *Developer note: updates default tickspacing for new pools*
 
 | Name | Type | Description |
@@ -501,8 +612,6 @@ function setDefaultPluginFactory(address newDefaultPluginFactory) external
 ```
 **Selector**: `0x2939dd97`
 
-
-
 *Developer note: updates pluginFactory address*
 
 | Name | Type | Description |
@@ -515,8 +624,6 @@ function setDefaultPluginFactory(address newDefaultPluginFactory) external
 function setVaultFactory(address newVaultFactory) external
 ```
 **Selector**: `0x3ea7fbdb`
-
-
 
 *Developer note: updates vaultFactory address*
 
