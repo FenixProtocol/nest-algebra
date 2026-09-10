@@ -5,7 +5,6 @@ import '@cryptoalgebra/integral-core/contracts/libraries/SafeCast.sol';
 import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
-import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import './interfaces/ISwapRouter.sol';
 import './base/PeripheryImmutableState.sol';
@@ -26,8 +25,7 @@ contract SwapRouter is
     PeripheryValidation,
     PeripheryPaymentsWithFee,
     Multicall,
-    SelfPermit,
-    ReentrancyGuard
+    SelfPermit
 {
     using Path for bytes;
     using SafeCast for uint256;
@@ -39,7 +37,11 @@ contract SwapRouter is
     /// @dev Transient storage variable used for returning the computed amount in for an exact output swap.
     uint256 private amountInCached = DEFAULT_AMOUNT_IN_CACHED;
 
-    constructor(address _factory, address _WNativeToken, address _poolDeployer) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
+    constructor(
+        address _factory,
+        address _WNativeToken,
+        address _poolDeployer
+    ) PeripheryImmutableState(_factory, _WNativeToken, _poolDeployer) {}
 
     /// @dev Returns the pool for the given token pair. The pool contract may or may not exist.
     function getPool(address deployer, address tokenA, address tokenB) private view returns (IAlgebraPool) {
@@ -110,12 +112,15 @@ contract SwapRouter is
     /// @inheritdoc ISwapRouter
     function exactInputSingle(
         ExactInputSingleParams calldata params
-    ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
+    ) external payable override nonReentrant checkDeadline(params.deadline) returns (uint256 amountOut) {
         amountOut = exactInputInternal(
             params.amountIn,
             params.recipient,
             params.limitSqrtPrice,
-            SwapCallbackData({path: abi.encodePacked(params.tokenIn, params.deployer, params.tokenOut), payer: msg.sender})
+            SwapCallbackData({
+                path: abi.encodePacked(params.tokenIn, params.deployer, params.tokenOut),
+                payer: msg.sender
+            })
         );
         require(amountOut >= params.amountOutMinimum, 'Too little received');
     }
@@ -123,7 +128,7 @@ contract SwapRouter is
     /// @inheritdoc ISwapRouter
     function exactInput(
         ExactInputParams memory params
-    ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
+    ) external payable override nonReentrant checkDeadline(params.deadline) returns (uint256 amountOut) {
         address payer = msg.sender; // msg.sender pays for the first hop
 
         while (true) {
@@ -153,7 +158,7 @@ contract SwapRouter is
     /// @inheritdoc ISwapRouter
     function exactInputSingleSupportingFeeOnTransferTokens(
         ExactInputSingleParams calldata params
-    ) external payable override checkDeadline(params.deadline) returns (uint256 amountOut) {
+    ) external payable override nonReentrant checkDeadline(params.deadline) returns (uint256 amountOut) {
         SwapCallbackData memory data = SwapCallbackData({
             path: abi.encodePacked(params.tokenIn, params.deployer, params.tokenOut),
             payer: msg.sender
@@ -162,16 +167,17 @@ contract SwapRouter is
 
         bool zeroToOne = params.tokenIn < params.tokenOut;
 
-        (int256 amount0, int256 amount1) = getPool(params.deployer, params.tokenIn, params.tokenOut).swapWithPaymentInAdvance(
-            msg.sender,
-            recipient,
-            zeroToOne,
-            params.amountIn.toInt256(),
-            params.limitSqrtPrice == 0
-                ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
-                : params.limitSqrtPrice,
-            abi.encode(data)
-        );
+        (int256 amount0, int256 amount1) = getPool(params.deployer, params.tokenIn, params.tokenOut)
+            .swapWithPaymentInAdvance(
+                msg.sender,
+                recipient,
+                zeroToOne,
+                params.amountIn.toInt256(),
+                params.limitSqrtPrice == 0
+                    ? (zeroToOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                    : params.limitSqrtPrice,
+                abi.encode(data)
+            );
 
         amountOut = uint256(-(zeroToOne ? amount1 : amount0));
 
@@ -217,7 +223,10 @@ contract SwapRouter is
             params.amountOut,
             params.recipient,
             params.limitSqrtPrice,
-            SwapCallbackData({path: abi.encodePacked(params.tokenOut, params.deployer, params.tokenIn), payer: msg.sender})
+            SwapCallbackData({
+                path: abi.encodePacked(params.tokenOut, params.deployer, params.tokenIn),
+                payer: msg.sender
+            })
         );
 
         require(amountIn <= params.amountInMaximum, 'Too much requested');

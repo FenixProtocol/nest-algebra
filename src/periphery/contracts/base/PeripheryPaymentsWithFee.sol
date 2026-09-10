@@ -18,7 +18,7 @@ abstract contract PeripheryPaymentsWithFee is PeripheryPayments, IPeripheryPayme
         address recipient,
         uint256 feeBips,
         address feeRecipient
-    ) public payable override {
+    ) public payable override nonReentrant {
         require(feeBips > 0 && feeBips <= 100);
 
         uint256 balanceWNativeToken = IWNativeToken(WNativeToken).balanceOf(address(this));
@@ -39,7 +39,7 @@ abstract contract PeripheryPaymentsWithFee is PeripheryPayments, IPeripheryPayme
         address recipient,
         uint256 feeBips,
         address feeRecipient
-    ) public payable override {
+    ) public payable override nonReentrant {
         require(feeBips > 0 && feeBips <= 100);
 
         uint256 balanceToken = IERC20(token).balanceOf(address(this));
