@@ -6,7 +6,7 @@ export * from './actors';
 export * from './ticks';
 
 import { provider } from './provider';
-import { BigNumberish, Contract, ContractTransactionResponse, ContractTransaction } from 'ethers';
+import { BigNumberish, Contract, ContractTransactionResponse, ContractTransaction, ZeroAddress } from 'ethers';
 import { TransactionReceipt, TransactionResponse } from '@ethersproject/abstract-provider';
 
 import bn from 'bignumber.js';
@@ -78,10 +78,11 @@ export async function snapshotGasCost(
 
 export function encodePath(path: string[]): string {
   let encoded = '0x';
-  for (let i = 0; i < path.length; i++) {
-    // 20 byte encoding of the address
+  for (let i = 0; i < path.length - 1; i++) {
     encoded += path[i].slice(2);
+    encoded += ZeroAddress.slice(2);
   }
+  encoded += path[path.length - 1].slice(2);
 
   return encoded.toLowerCase();
 }

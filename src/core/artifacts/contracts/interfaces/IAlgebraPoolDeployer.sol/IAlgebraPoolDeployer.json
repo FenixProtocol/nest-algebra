@@ -19,6 +19,11 @@
           "internalType": "address",
           "name": "token1",
           "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "customDeployer",
+          "type": "address"
         }
       ],
       "name": "deploy",

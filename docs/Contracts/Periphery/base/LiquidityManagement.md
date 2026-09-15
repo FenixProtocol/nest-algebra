@@ -2,7 +2,6 @@
 
 # LiquidityManagement
 
-
 Liquidity management functions
 
 Internal functions for safely managing liquidity in Algebra
@@ -15,23 +14,21 @@ https://github.com/Uniswap/v3-periphery*
 ## Structs
 ### MintCallbackData
 
-
-
 ```solidity
 struct MintCallbackData {
   struct PoolAddress.PoolKey poolKey;
+  address deployer;
   address payer;
 }
 ```
 
 ### AddLiquidityParams
 
-
-
 ```solidity
 struct AddLiquidityParams {
   address token0;
   address token1;
+  address deployer;
   address recipient;
   int24 tickLower;
   int24 tickUpper;
@@ -41,7 +38,6 @@ struct AddLiquidityParams {
   uint256 amount1Min;
 }
 ```
-
 
 ## Functions
 ### algebraMintCallback

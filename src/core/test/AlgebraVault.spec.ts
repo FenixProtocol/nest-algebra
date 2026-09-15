@@ -26,7 +26,7 @@ describe('AlgebraCommunityVault', () => {
     });
 
     const _factory = await createEmptyFactoryProxy();
-    await _factory.initialize(poolDeployerAddress);
+    await _factory.initialize(poolDeployerAddress, deployer.address);
 
     const poolDeployerFactory = await ethers.getContractFactory('AlgebraPoolDeployer');
     poolDeployer = (await poolDeployerFactory.deploy(_factory)) as any as AlgebraPoolDeployer;

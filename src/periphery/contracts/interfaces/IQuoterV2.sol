@@ -36,6 +36,7 @@ interface IQuoterV2 {
     struct QuoteExactInputSingleParams {
         address tokenIn;
         address tokenOut;
+        address deployer;
         uint256 amountIn;
         uint160 limitSqrtPrice;
     }
@@ -44,6 +45,7 @@ interface IQuoterV2 {
     /// @param params The params for the quote, encoded as `QuoteExactInputSingleParams`
     /// tokenIn The token being swapped in
     /// tokenOut The token being swapped out
+    /// deployer The custom pool deployer, or address(0) for classic pools
     /// amountIn The desired input amount
     /// limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap
     /// @return amountOut The amount of `tokenOut` that would be received
@@ -91,6 +93,7 @@ interface IQuoterV2 {
     struct QuoteExactOutputSingleParams {
         address tokenIn;
         address tokenOut;
+        address deployer;
         uint256 amount;
         uint160 limitSqrtPrice;
     }
@@ -99,6 +102,7 @@ interface IQuoterV2 {
     /// @param params The params for the quote, encoded as `QuoteExactOutputSingleParams`
     /// tokenIn The token being swapped in
     /// tokenOut The token being swapped out
+    /// deployer The custom pool deployer, or address(0) for classic pools
     /// amountOut The desired output amount
     /// limitSqrtPrice The price limit of the pool that cannot be exceeded by the swap
     /// @return amountOut The amount of the last token that would be received
@@ -119,4 +123,5 @@ interface IQuoterV2 {
             uint256 gasEstimate,
             uint16 fee
         );
+
 }

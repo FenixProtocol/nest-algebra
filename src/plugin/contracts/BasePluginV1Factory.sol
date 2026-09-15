@@ -48,6 +48,20 @@ contract BasePluginV1Factory is IBasePluginV1Factory {
     return _createPlugin(pool);
   }
 
+  /// @notice This factory does not support the custom pool creation hook flow.
+  /// @dev BasePluginV1Factory was not developed for custom pool hooks. This implementation exists only to satisfy
+  /// the updated IAlgebraPluginFactory interface, which includes hook methods for custom pool logic.
+  function beforeCreatePoolHook(address, address, address, address, address, bytes calldata) external pure override returns (address) {
+    revert('Hooks not supported');
+  }
+
+  /// @notice This factory does not support the custom pool creation hook flow.
+  /// @dev BasePluginV1Factory was not developed for custom pool hooks. This implementation exists only to satisfy
+  /// the updated IAlgebraPluginFactory interface, which includes hook methods for custom pool logic.
+  function afterCreatePoolHook(address, address, address) external pure override {
+    revert('Hooks not supported');
+  }
+
   /// @inheritdoc IBasePluginV1Factory
   function createPluginForExistingPool(address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);

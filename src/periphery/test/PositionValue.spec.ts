@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { MaxUint256 } from 'ethers';
+import { MaxUint256, ZeroAddress } from 'ethers';
 import {
   PositionValueTest,
   SwapRouter,
@@ -80,6 +80,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: tokens[0],
         token1: tokens[1],
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -141,6 +142,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -160,6 +162,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: -60,
         recipient: wallets[0].address,
@@ -179,6 +182,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: 60,
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -198,6 +202,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: -6_000,
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -217,6 +222,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: 6_000,
         recipient: wallets[0].address,
@@ -236,6 +242,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -260,6 +267,7 @@ describe('PositionValue', async () => {
       await nft.mint({
         token0: await tokens[0].getAddress(),
         token1: await tokens[1].getAddress(),
+        deployer: ZeroAddress,
         tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
         recipient: wallets[0].address,
@@ -276,6 +284,7 @@ describe('PositionValue', async () => {
         await nft.mint({
           token0: await tokens[0].getAddress(),
           token1: await tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: TICK_SPACINGS[FeeAmount.MEDIUM] * -1_000,
           tickUpper: TICK_SPACINGS[FeeAmount.MEDIUM] * 1_000,
           recipient: wallets[0].address,
@@ -365,6 +374,7 @@ describe('PositionValue', async () => {
         await nft.mint({
           token0: await tokens[0].getAddress(),
           token1: await tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: TICK_SPACINGS[FeeAmount.MEDIUM] * -10,
           tickUpper: TICK_SPACINGS[FeeAmount.MEDIUM] * 10,
           recipient: wallets[0].address,
@@ -420,6 +430,7 @@ describe('PositionValue', async () => {
         await nft.mint({
           token0: await tokens[0].getAddress(),
           token1: await tokens[1].getAddress(),
+          deployer: ZeroAddress,
           tickLower: TICK_SPACINGS[FeeAmount.MEDIUM] * -10,
           tickUpper: TICK_SPACINGS[FeeAmount.MEDIUM] * 10,
 

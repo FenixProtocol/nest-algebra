@@ -46,7 +46,7 @@ describe('CallbackValidation', () => {
     await expect(
       callbackValidation
         .connect(nonpairAddr)
-        .verifyCallback(await factory.poolDeployer(), await tokens[0].getAddress(), await tokens[1].getAddress())
+        .verifyCallback(await factory.getAddress(), await tokens[0].getAddress(), await tokens[1].getAddress())
     ).to.be.revertedWith('Invalid caller of callback');
   });
 });

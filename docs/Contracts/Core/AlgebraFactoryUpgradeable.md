@@ -2,7 +2,6 @@
 
 # AlgebraFactoryUpgradeable
 
-
 Algebra factory
 
 Is used to deploy pools and its plugins
@@ -20,7 +19,6 @@ bytes32 constant POOLS_ADMINISTRATOR_ROLE = 0xb73ce166ead2f8e9add217713a7989e4ed
 
 role that can change communityFee and tickspacing in pools
 
-
 ### POOLS_CREATOR_ROLE
 ```solidity
 bytes32 constant POOLS_CREATOR_ROLE = 0xa7106ea771a74f2d048c62cace8c00d3e120b24b61327e6415035f60d47ce888
@@ -29,6 +27,13 @@ bytes32 constant POOLS_CREATOR_ROLE = 0xa7106ea771a74f2d048c62cace8c00d3e120b24b
 
 role that can create pools when public pool creation is disabled
 
+### CUSTOM_POOL_DEPLOYER
+```solidity
+bytes32 constant CUSTOM_POOL_DEPLOYER = 0xc9cf812513d9983585eb40fcfe6fd49fbb6a45815663ec33b30a6c6c7de3683b
+```
+**Selector**: `0x07810754`
+
+role that can call &#x60;createCustomPool&#x60;
 
 ### POOL_INIT_CODE_HASH
 ```solidity
@@ -48,7 +53,6 @@ address poolDeployer
 
 Returns the current poolDeployerAddress
 
-
 ### isPublicPoolCreationMode
 ```solidity
 bool isPublicPoolCreationMode
@@ -56,7 +60,6 @@ bool isPublicPoolCreationMode
 **Selector**: `0x63d21273`
 
 Returns the status of enable public pool creation mode
-
 
 ### defaultCommunityFee
 ```solidity
@@ -66,7 +69,6 @@ uint16 defaultCommunityFee
 
 Returns the default community fee
 
-
 ### defaultFee
 ```solidity
 uint16 defaultFee
@@ -74,7 +76,6 @@ uint16 defaultFee
 **Selector**: `0x5a6c72d0`
 
 Returns the default fee
-
 
 ### defaultTickspacing
 ```solidity
@@ -84,15 +85,11 @@ int24 defaultTickspacing
 
 Returns the default tickspacing
 
-
 ### renounceOwnershipStartTimestamp
 ```solidity
 uint256 renounceOwnershipStartTimestamp
 ```
 **Selector**: `0x084bfff9`
-
-
-
 
 ### defaultPluginFactory
 ```solidity
@@ -124,6 +121,21 @@ Returns the pool address for a given pair of tokens, or address 0 if it does not
 
 *Developer note: tokenA and tokenB may be passed in either token0/token1 or token1/token0 order*
 
+### customPoolByPair
+```solidity
+mapping(address => mapping(address => mapping(address => address))) customPoolByPair
+```
+**Selector**: `0x23da36cc`
+
+Returns the custom pool address for a custom deployer and pair of tokens, or address 0 if it does not exist
+
+### deployerByPool
+```solidity
+mapping(address => address) deployerByPool
+```
+**Selector**: `0x980fc5b7`
+
+Returns the custom deployer for a pool, or address 0 for classic pools and unknown pools
 
 ## Functions
 ### constructor
@@ -132,22 +144,32 @@ Returns the pool address for a given pair of tokens, or address 0 if it does not
 constructor() public
 ```
 
-
-
 *Developer note: Initializes the contract by disabling the initializer of the inherited upgradeable contract.*
 
 ### initialize
 
 ```solidity
-function initialize(address _poolDeployer) external
+function initialize(address _poolDeployer, address _initOwner) external
 ```
-**Selector**: `0xc4d66de8`
-
-
+**Selector**: `0x485cc955`
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _poolDeployer | address |  |
+| _initOwner | address |  |
+
+### setPoolDeployer
+
+```solidity
+function setPoolDeployer(address newPoolDeployer) external
+```
+**Selector**: `0x1aa3e95d`
+
+Updates the pool deployer after upgrading an existing factory proxy.
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| newPoolDeployer | address | The new pool deployer instance |
 
 ### owner
 
@@ -230,6 +252,27 @@ Deterministically computes the pool address given the token0 and token1
 | ---- | ---- | ----------- |
 | pool | address | The contract address of the Algebra pool |
 
+### computeCustomPoolAddress
+
+```solidity
+function computeCustomPoolAddress(address customDeployer, address token0, address token1) public view returns (address customPool)
+```
+**Selector**: `0x1ba89df4`
+
+Deterministically computes a custom pool address for a custom deployer and token pair
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customDeployer | address | The custom pool deployer identifier used in the CREATE2 salt |
+| token0 | address | first token |
+| token1 | address | second token |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customPool | address | The contract address of the Algebra custom pool |
+
 ### createPool
 
 ```solidity
@@ -253,14 +296,35 @@ The call will revert if the pool already exists or the token arguments are inval
 | ---- | ---- | ----------- |
 | pool | address | The address of the newly created pool |
 
+### createCustomPool
+
+```solidity
+function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB, bytes data) external returns (address customPool)
+```
+**Selector**: `0xdbbf3db4`
+
+Creates a custom pool for the given two tokens using &#x60;customDeployer&#x60;
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customDeployer | address | The custom pool deployer identifier, also used for custom pool address calculation |
+| creator | address | The initiator of custom pool creation |
+| tokenA | address | One of the two tokens in the desired pool |
+| tokenB | address | The other of the two tokens in the desired pool |
+| data | bytes | Additional data for plugin creation |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| customPool | address | The address of the newly created custom pool |
+
 ### setIsPublicPoolCreationMode
 
 ```solidity
 function setIsPublicPoolCreationMode(bool mode_) external
 ```
 **Selector**: `0x5d2493ab`
-
-
 
 *Developer note: updates pools creation mode*
 
@@ -275,8 +339,6 @@ function setDefaultCommunityFee(uint16 newDefaultCommunityFee) external
 ```
 **Selector**: `0x8d5a8711`
 
-
-
 *Developer note: updates default community fee for new pools*
 
 | Name | Type | Description |
@@ -289,8 +351,6 @@ function setDefaultCommunityFee(uint16 newDefaultCommunityFee) external
 function setDefaultFee(uint16 newDefaultFee) external
 ```
 **Selector**: `0x77326584`
-
-
 
 *Developer note: updates default fee for new pools*
 
@@ -305,8 +365,6 @@ function setDefaultTickspacing(int24 newDefaultTickspacing) external
 ```
 **Selector**: `0xf09489ac`
 
-
-
 *Developer note: updates default tickspacing for new pools*
 
 | Name | Type | Description |
@@ -320,8 +378,6 @@ function setDefaultPluginFactory(address newDefaultPluginFactory) external
 ```
 **Selector**: `0x2939dd97`
 
-
-
 *Developer note: updates pluginFactory address*
 
 | Name | Type | Description |
@@ -334,8 +390,6 @@ function setDefaultPluginFactory(address newDefaultPluginFactory) external
 function setVaultFactory(address newVaultFactory) external
 ```
 **Selector**: `0x3ea7fbdb`
-
-
 
 *Developer note: updates vaultFactory address*
 
@@ -369,9 +423,6 @@ function renounceOwnership() public
 ```
 **Selector**: `0x715018a6`
 
-
-
 *Developer note: Leaves the contract without owner. It will not be possible to call &#x60;onlyOwner&#x60; functions anymore.
 Can only be called by the current owner if RENOUNCE_OWNERSHIP_DELAY seconds
 have passed since the call to the startRenounceOwnership() function.*
-

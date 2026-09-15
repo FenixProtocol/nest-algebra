@@ -2,6 +2,7 @@
 pragma solidity >=0.7.5;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '../interfaces/IPeripheryPayments.sol';
 import '../interfaces/external/IWNativeToken.sol';
@@ -12,7 +13,7 @@ import './PeripheryImmutableState.sol';
 
 /// @dev Credit to Uniswap Labs under GPL-2.0-or-later license:
 /// https://github.com/Uniswap/v3-periphery
-abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableState {
+abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableState, ReentrancyGuard {
     receive() external payable {
         require(msg.sender == WNativeToken, 'Not WNativeToken');
     }
@@ -22,7 +23,7 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
     }
 
     /// @inheritdoc IPeripheryPayments
-    function unwrapWNativeToken(uint256 amountMinimum, address recipient) external payable override {
+    function unwrapWNativeToken(uint256 amountMinimum, address recipient) external payable override nonReentrant {
         uint256 balanceWNativeToken = _balanceOfToken(WNativeToken);
         require(balanceWNativeToken >= amountMinimum, 'Insufficient WNativeToken');
 
@@ -33,7 +34,11 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
     }
 
     /// @inheritdoc IPeripheryPayments
-    function sweepToken(address token, uint256 amountMinimum, address recipient) external payable override {
+    function sweepToken(
+        address token,
+        uint256 amountMinimum,
+        address recipient
+    ) external payable override nonReentrant {
         uint256 balanceToken = _balanceOfToken(token);
         require(balanceToken >= amountMinimum, 'Insufficient token');
 
@@ -43,7 +48,7 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
     }
 
     /// @inheritdoc IPeripheryPayments
-    function refundNativeToken() external payable override {
+    function refundNativeToken() external payable override nonReentrant {
         if (address(this).balance > 0) TransferHelper.safeTransferNative(msg.sender, address(this).balance);
     }
 

@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol';
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '../interfaces/ISelfPermit.sol';
 import '../interfaces/external/IERC20PermitAllowed.sol';
@@ -11,7 +12,7 @@ import '../interfaces/external/IERC20PermitAllowed.sol';
 /// @notice Functionality to call permit on any EIP-2612-compliant token for use in the route
 /// @dev These functions are expected to be embedded in multicalls to allow EOAs to approve a contract and call a function
 /// that requires an approval in a single transaction.
-abstract contract SelfPermit is ISelfPermit {
+abstract contract SelfPermit is ISelfPermit, ReentrancyGuard {
     /// @inheritdoc ISelfPermit
     function selfPermit(
         address token,
@@ -20,8 +21,8 @@ abstract contract SelfPermit is ISelfPermit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public payable override {
-        IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s);
+    ) public payable override nonReentrant {
+        _selfPermit(token, value, deadline, v, r, s);
     }
 
     /// @inheritdoc ISelfPermit
@@ -32,8 +33,8 @@ abstract contract SelfPermit is ISelfPermit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external payable override {
-        if (_getAllowance(token) < value) selfPermit(token, value, deadline, v, r, s);
+    ) external payable override nonReentrant {
+        if (_getAllowance(token) < value) _selfPermit(token, value, deadline, v, r, s);
     }
 
     /// @inheritdoc ISelfPermit
@@ -44,8 +45,8 @@ abstract contract SelfPermit is ISelfPermit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public payable override {
-        IERC20PermitAllowed(token).permit(msg.sender, address(this), nonce, expiry, true, v, r, s);
+    ) public payable override nonReentrant {
+        _selfPermitAllowed(token, nonce, expiry, v, r, s);
     }
 
     /// @inheritdoc ISelfPermit
@@ -56,8 +57,16 @@ abstract contract SelfPermit is ISelfPermit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external payable override {
-        if (_getAllowance(token) < type(uint256).max) selfPermitAllowed(token, nonce, expiry, v, r, s);
+    ) external payable override nonReentrant {
+        if (_getAllowance(token) < type(uint256).max) _selfPermitAllowed(token, nonce, expiry, v, r, s);
+    }
+
+    function _selfPermit(address token, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) private {
+        IERC20Permit(token).permit(msg.sender, address(this), value, deadline, v, r, s);
+    }
+
+    function _selfPermitAllowed(address token, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) private {
+        IERC20PermitAllowed(token).permit(msg.sender, address(this), nonce, expiry, true, v, r, s);
     }
 
     function _getAllowance(address token) private view returns (uint256) {

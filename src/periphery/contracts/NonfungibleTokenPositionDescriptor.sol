@@ -3,11 +3,11 @@ pragma solidity =0.8.20;
 
 import '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 
 import './libraries/SafeERC20Namer.sol';
 import './interfaces/INonfungiblePositionManager.sol';
 import './interfaces/INonfungibleTokenPositionDescriptor.sol';
-import './libraries/PoolAddress.sol';
 import './libraries/NFTDescriptor.sol';
 
 /// @title Describes NFT token positions
@@ -66,15 +66,12 @@ contract NonfungibleTokenPositionDescriptor is INonfungibleTokenPositionDescript
         INonfungiblePositionManager positionManager,
         uint256 tokenId
     ) external view override returns (string memory) {
-        (, , address token0, address token1, int24 tickLower, int24 tickUpper, , , , , ) = positionManager.positions(
-            tokenId
-        );
+        (, , address token0, address token1, address deployer, int24 tickLower, int24 tickUpper, , , , , ) = positionManager.positions(tokenId);
 
         IAlgebraPool pool = IAlgebraPool(
-            PoolAddress.computeAddress(
-                positionManager.poolDeployer(),
-                PoolAddress.PoolKey({token0: token0, token1: token1})
-            )
+            deployer == address(0)
+                ? IAlgebraFactory(positionManager.factory()).poolByPair(token0, token1)
+                : IAlgebraFactory(positionManager.factory()).customPoolByPair(deployer, token0, token1)
         );
 
         bool _flipRatio = flipRatio(token0, token1);

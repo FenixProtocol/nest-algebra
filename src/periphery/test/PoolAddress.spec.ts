@@ -43,11 +43,10 @@ describe('PoolAddress', () => {
 
     it('token argument order cannot be in reverse', async () => {
       await expect(
-        poolAddress.computeAddress(
+        poolAddress.computeAddressRaw(
           '0x5FbDB2315678afecb367f032d93F642f64180aa3',
           '0x2000000000000000000000000000000000000000',
-          '0x1000000000000000000000000000000000000000',
-          3000
+          '0x1000000000000000000000000000000000000000'
         )
       ).to.be.reverted;
     });

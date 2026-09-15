@@ -2,7 +2,6 @@
 
 # BasePluginV1Factory
 
-
 Algebra Integral 1.0 default plugin factory
 
 This contract creates Algebra default plugins for Algebra liquidity pools
@@ -14,9 +13,6 @@ This contract creates Algebra default plugins for Algebra liquidity pools
 ```solidity
 modifier onlyAdministrator()
 ```
-
-
-
 
 ## Public variables
 ### ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR
@@ -37,7 +33,6 @@ address immutable algebraFactory
 
 Returns the address of AlgebraFactory
 
-
 ### defaultFeeConfiguration
 ```solidity
 struct AlgebraFeeConfiguration defaultFeeConfiguration
@@ -57,14 +52,11 @@ address farmingAddress
 
 Returns current farming address
 
-
 ### implementation
 ```solidity
 address implementation
 ```
 **Selector**: `0x5c60da1b`
-
-
 
 *Developer note: Must return an address that can be used as a delegate call target.
 
@@ -78,16 +70,12 @@ mapping(address => address) pluginByPool
 
 Returns address of plugin created for given AlgebraPool
 
-
-
 ## Functions
 ### constructor
 
 ```solidity
 constructor(address _algebraFactory, address _basePluginV1Implementation) public
 ```
-
-
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -114,6 +102,51 @@ Deploys new plugin contract for pool
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | [0] | address | New plugin address |
+
+### beforeCreatePoolHook
+
+```solidity
+function beforeCreatePoolHook(address, address, address, address, address, bytes) external pure returns (address)
+```
+**Selector**: `0x1d0338d9`
+
+This factory does not support the custom pool creation hook flow.
+
+*Developer note: BasePluginV1Factory was not developed for custom pool hooks. This implementation exists only to satisfy
+the updated IAlgebraPluginFactory interface, which includes hook methods for custom pool logic.*
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+|  | address |  |
+|  | address |  |
+|  | address |  |
+|  | address |  |
+|  | address |  |
+|  | bytes |  |
+
+**Returns:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| [0] | address |  |
+
+### afterCreatePoolHook
+
+```solidity
+function afterCreatePoolHook(address, address, address) external pure
+```
+**Selector**: `0x8d5ef8d1`
+
+This factory does not support the custom pool creation hook flow.
+
+*Developer note: BasePluginV1Factory was not developed for custom pool hooks. This implementation exists only to satisfy
+the updated IAlgebraPluginFactory interface, which includes hook methods for custom pool logic.*
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+|  | address |  |
+|  | address |  |
+|  | address |  |
 
 ### createPluginForExistingPool
 
@@ -158,8 +191,6 @@ function setFarmingAddress(address newFarmingAddress) external
 ```
 **Selector**: `0xb001f618`
 
-
-
 *Developer note: updates farmings manager address on the factory*
 
 | Name | Type | Description |
@@ -172,8 +203,6 @@ function setFarmingAddress(address newFarmingAddress) external
 function upgradeTo(address newImplementation) external
 ```
 **Selector**: `0x3659cfe6`
-
-
 
 *Developer note: Upgrades the beacon to a new implementation.
 

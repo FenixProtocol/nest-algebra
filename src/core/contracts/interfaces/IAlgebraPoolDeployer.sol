@@ -28,10 +28,12 @@ interface IAlgebraPoolDeployer {
   /// @param plugin The pool associated plugin (if any)
   /// @param token0 The first token of the pool by address sort order
   /// @param token1 The second token of the pool by address sort order
+  /// @param customDeployer The custom pool deployer address used in the salt, or address(0) for classic pools
   /// @return pool The deployed pool's address
   function deploy(
     address plugin,
     address token0,
-    address token1
+    address token1,
+    address customDeployer
   ) external returns (address pool);
 }

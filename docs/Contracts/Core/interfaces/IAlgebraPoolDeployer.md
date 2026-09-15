@@ -2,7 +2,6 @@
 
 # IAlgebraPoolDeployer
 
-
 An interface for a contract that is capable of deploying Algebra Pools
 
 A contract that constructs a pool must implement this to pass arguments to the pool
@@ -11,7 +10,6 @@ A contract that constructs a pool must implement this to pass arguments to the p
 of the pool being constant allowing the CREATE2 address of the pool to be cheaply computed on-chain.
 Credit to Uniswap Labs under GPL-2.0-or-later license:
 https://github.com/Uniswap/v3-core/tree/main/contracts/interfaces*
-
 
 ## Functions
 ### getDeployParameters
@@ -37,11 +35,9 @@ Get the parameters to be used in constructing the pool, set transiently during p
 ### deploy
 
 ```solidity
-function deploy(address plugin, address token0, address token1) external returns (address pool)
+function deploy(address plugin, address token0, address token1, address customDeployer) external returns (address pool)
 ```
-**Selector**: `0xd9181cd3`
-
-
+**Selector**: `0xfd82b73a`
 
 *Developer note: Deploys a pool with the given parameters by transiently setting the parameters in cache.*
 
@@ -50,6 +46,7 @@ function deploy(address plugin, address token0, address token1) external returns
 | plugin | address | The pool associated plugin (if any) |
 | token0 | address | The first token of the pool by address sort order |
 | token1 | address | The second token of the pool by address sort order |
+| customDeployer | address | The custom pool deployer address used in the salt, or address(0) for classic pools |
 
 **Returns:**
 

@@ -64,10 +64,10 @@ const v3CoreFactoryFixture: () => Promise<IAlgebraFactory> = async () => {
   });
 
   const _factory = await createEmptyFactoryProxy();
-  await _factory.initialize(poolDeployerAddress);
+  await _factory.initialize(poolDeployerAddress, deployer.address);
 
   const poolDeployerFactory = await ethers.getContractFactory(POOL_DEPLOYER_ABI, POOL_DEPLOYER_BYTECODE);
-  const poolDeployer = await poolDeployerFactory.deploy(_factory);
+  await poolDeployerFactory.deploy(_factory);
 
   await _factory.setIsPublicPoolCreationMode(true);
 

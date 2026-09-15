@@ -25,6 +25,15 @@ describe('BasePluginV1Factory', () => {
       expect(pluginFactory.createPlugin(wallet.address, ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWithoutReason;
     });
 
+    it('does not support custom pool creation hooks', async () => {
+      await expect(
+        pluginFactory.beforeCreatePoolHook(wallet.address, wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')
+      ).to.be.revertedWith('Hooks not supported');
+      expect(await pluginFactory.pluginByPool(wallet.address)).to.eq(ZERO_ADDRESS);
+
+      await expect(pluginFactory.afterCreatePoolHook(ZERO_ADDRESS, wallet.address, ZERO_ADDRESS)).to.be.revertedWith('Hooks not supported');
+    });
+
     it('factory can create plugin', async () => {
       const pluginFactory = await ethers.getContractFactory('AlgebraBasePluginV1');
       const pluginImplementation = await pluginFactory.deploy();
