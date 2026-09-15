@@ -24,7 +24,8 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
   uint8 public constant MAX_ORACLE_PRICE_EXP = 60;
   uint32 public constant MAX_CONFIG_GAP = 2000;
   uint256 internal constant MAX_PRICED_GAP = 10000;
-  uint64 public constant MIN_ORACLE_LIVE_SCALING = uint64(100 * SCALING_PRECISION);
+  /// @notice Minimum live slope is 0.01 normalized; permission to configure is not economic approval.
+  uint64 public constant MIN_ORACLE_LIVE_SCALING = uint64(SCALING_PRECISION);
   uint64 public constant MAX_FALLBACK_SCALING_FACTOR = uint64(50 * SCALING_PRECISION);
   uint256 internal constant FEE_UNITS_PER_TICK = 100;
   uint256 public constant MIN_LVR_EDGE_MARGIN = 100;
@@ -105,8 +106,8 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     emit OracleConfigChanged(klvr, deadband, shortTwapWindow, spotIndex, priceExp, inverted, maxConfigGap);
   }
 
-  /// @notice While armed, the sandwich slope is pinned at normalized slope 1.0. The intended 60-second
-  /// shortTwapWindow limits the duration of lag after a genuine move but does not eliminate it.
+  /// @notice While armed, the short-TWAP slope is configurable from normalized 0.01 to 1.0.
+  /// Lower slopes reduce the surcharge, not the TWAP's lag duration. Economic protection requires review.
   function setDeviationFeeConfig(uint16 baseFee, uint16 feeCap, uint64 scalingFactor, uint32 twapWindow) external virtual override {
     if (_klvr != 0) {
       require(scalingFactor >= MIN_ORACLE_LIVE_SCALING, 'Sandwich slope below floor');

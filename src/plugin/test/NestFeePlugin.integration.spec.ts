@@ -1,6 +1,6 @@
 import { MaxUint256 } from 'ethers';
 import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-network-helpers';
 
 import { abi as POOL_ABI, bytecode as POOL_BYTECODE } from '@cryptoalgebra/integral-core/artifacts/contracts/AlgebraPool.sol/AlgebraPool.json';
 import {
@@ -11,10 +11,22 @@ import { AlgebraPool, TestAlgebraCallee } from '@cryptoalgebra/integral-core/typ
 import { expect } from './shared/expect';
 import { customPoolEnvironmentFixture } from './shared/customPoolFixtures';
 import { tokensFixture } from './shared/externalFixtures';
-import { SQRT_PRICE_1 } from './shared/nestFixtures';
+import { installSpotOracle, SQRT_PRICE_1 } from './shared/nestFixtures';
 import { MAX_SQRT_RATIO, MIN_SQRT_RATIO } from './shared/utilities';
 
 type Product = 'TWAP' | 'MEV';
+type SwapMode = 'exact0For1' | 'exact1For0' | 'zeroForExact1' | 'oneForExact0' | 'prepaid0For1' | 'prepaid1For0';
+
+const BASE = 1_000;
+const CAP = 10_000;
+const FALLBACK_SLOPE = 40_000_000;
+const KLVR = 50_000_000;
+const DEADBAND = 20;
+const LONG_TWAP = 600;
+const SHORT_TWAP = 60;
+const SPOT_INDEX = 107;
+const PRICE_EXP = 18;
+const CONFIG_GAP = 200;
 
 async function deployCustomPoolWithLiquidity(product: Product) {
   const { factory, entryPoint } = await customPoolEnvironmentFixture();
@@ -45,6 +57,36 @@ async function deployCustomPoolWithLiquidity(product: Product) {
 const twapFixture = () => deployCustomPoolWithLiquidity('TWAP');
 const mevFixture = () => deployCustomPoolWithLiquidity('MEV');
 
+async function alignOracleWithPool(pool: AlgebraPool, oracle: any) {
+  const sqrtPrice = BigInt((await pool.globalState())[0]);
+  const price = (sqrtPrice * sqrtPrice * 10n ** 18n) / (1n << 192n);
+  await oracle.configure(0, price);
+}
+
+async function configurableMevFixture() {
+  const deployed = await deployCustomPoolWithLiquidity('MEV');
+  const oracle = await installSpotOracle();
+  await time.increase(700);
+  await deployed.plugin.setFallbackScalingFactor(FALLBACK_SLOPE);
+  await deployed.plugin.setDeviationFeeConfig(BASE, CAP, 100_000_000, LONG_TWAP);
+  await deployed.plugin.setOracleConfig(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, PRICE_EXP, false, CONFIG_GAP);
+  await deployed.callee.swapExact0For1(await deployed.pool.getAddress(), 10n ** 15n, (await ethers.getSigners())[0].address, MIN_SQRT_RATIO + 1n);
+  await alignOracleWithPool(deployed.pool, oracle);
+  return { ...deployed, oracle };
+}
+
+async function executeSwap(mode: SwapMode, pool: AlgebraPool, callee: TestAlgebraCallee) {
+  const poolAddress = await pool.getAddress();
+  const recipient = (await ethers.getSigners())[0].address;
+  const amount = 10n ** 10n;
+  if (mode === 'exact0For1') return callee.swapExact0For1(poolAddress, amount, recipient, MIN_SQRT_RATIO + 1n);
+  if (mode === 'exact1For0') return callee.swapExact1For0(poolAddress, amount, recipient, MAX_SQRT_RATIO - 1n);
+  if (mode === 'zeroForExact1') return callee.swap0ForExact1(poolAddress, amount, recipient, MIN_SQRT_RATIO + 1n);
+  if (mode === 'oneForExact0') return callee.swap1ForExact0(poolAddress, amount, recipient, MAX_SQRT_RATIO - 1n);
+  if (mode === 'prepaid0For1') return callee.swapExact0For1SupportingFee(poolAddress, amount, recipient, MIN_SQRT_RATIO + 1n);
+  return callee.swapExact1For0SupportingFee(poolAddress, amount, recipient, MAX_SQRT_RATIO - 1n);
+}
+
 for (const [product, fixture] of [
   ['TWAP', twapFixture],
   ['MEV', mevFixture],
@@ -66,3 +108,44 @@ for (const [product, fixture] of [
     });
   });
 }
+
+describe('Nest MEV configurable-slope integration', () => {
+  for (const [mode, slope] of [
+    ['exact0For1', 1_000_000],
+    ['exact1For0', 20_000_000],
+    ['zeroForExact1', 40_000_000],
+    ['oneForExact0', 100_000_000],
+    ['prepaid0For1', 1_000_000],
+    ['prepaid1For0', 100_000_000],
+  ] as const) {
+    it(`applies the quoted slope fee for ${mode}`, async () => {
+      const { pool, plugin, callee } = await loadFixture(configurableMevFixture);
+      await plugin.setDeviationFeeConfig(BASE, CAP, slope, LONG_TWAP);
+      const quote = await plugin.getCurrentFee({ blockTag: 'pending' });
+      expect(quote).to.be.gt(BASE);
+
+      await executeSwap(mode, pool, callee);
+      expect((await pool.globalState())[2]).to.eq(quote);
+      expect(await pool.fee()).to.eq(await plugin.getCurrentFee());
+    });
+  }
+
+  it('keeps the selected live slope through real-pool fallback and recovery', async () => {
+    const { pool, plugin, callee, oracle } = await loadFixture(configurableMevFixture);
+
+    for (const slope of [1_000_000, 20_000_000, 40_000_000, 100_000_000]) {
+      await plugin.setDeviationFeeConfig(BASE, CAP, slope, LONG_TWAP);
+      await oracle.configure(1, 0);
+      const failedQuote = await plugin.getCurrentFee({ blockTag: 'pending' });
+      await executeSwap('exact1For0', pool, callee);
+      expect((await pool.globalState())[2]).to.eq(failedQuote);
+
+      await alignOracleWithPool(pool, oracle);
+      const recoveredQuote = await plugin.getCurrentFee({ blockTag: 'pending' });
+      await executeSwap('exact0For1', pool, callee);
+      expect((await pool.globalState())[2]).to.eq(recoveredQuote);
+      expect((await plugin.deviationFeeConfig())[2]).to.eq(slope);
+      expect(await plugin.fallbackScalingFactor()).to.eq(FALLBACK_SLOPE);
+    }
+  });
+});
