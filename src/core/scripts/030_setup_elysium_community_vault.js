@@ -7,6 +7,11 @@ const { getConfig } = require('../../../scripts/networksConfig');
 const ELYSIUM_TESTNET_CHAIN_ID = 99801n;
 const COMMUNITY_VAULT_FACTORY = '0xc0cCb9144B49A594BEe6b9aDF9Aa6FB9F71759D9'; // the FeeVault contract from nest-core
 const COMMUNITY_FEE = 100; // 10% of collected fees, expressed in thousandths.
+const WHITELISTED_CREATOR_ROLE = '0x400be8cdea82c593ef278a0994f451d04daad18f3a2ced40bcac267b98678ad2';
+const FEES_VAULT_FACTORY_ABI = [
+  'function hasRole(bytes32 role, address account) external view returns (bool)',
+  'function grantRole(bytes32 role, address account) external',
+];
 
 async function main() {
   const { chainId } = await hre.ethers.provider.getNetwork();
@@ -30,6 +35,15 @@ async function main() {
 
   if ((await hre.ethers.provider.getCode(COMMUNITY_VAULT_FACTORY)) === '0x') {
     throw new Error(`Community vault factory has no bytecode: ${COMMUNITY_VAULT_FACTORY}`);
+  }
+
+  const feesVaultFactory = new hre.ethers.Contract(COMMUNITY_VAULT_FACTORY, FEES_VAULT_FACTORY_ABI, signer);
+  if (!(await feesVaultFactory.hasRole(WHITELISTED_CREATOR_ROLE, deploysData.factory))) {
+    const grantRoleTx = await feesVaultFactory.grantRole(WHITELISTED_CREATOR_ROLE, deploysData.factory);
+    await grantRoleTx.wait();
+    console.log('WHITELISTED_CREATOR_ROLE granted to pool factory', deploysData.factory);
+  } else {
+    console.log('Pool factory already has WHITELISTED_CREATOR_ROLE', deploysData.factory);
   }
 
   const currentVaultFactory = await factory.vaultFactory();
