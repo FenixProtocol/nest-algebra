@@ -109,9 +109,21 @@ export default {
       gasPrice: 0.13e9,
       accounts: [`${DEV_KEY || '0x0000000000000000000000000000000000000000000000000000000000000000'}`],
     },
+    elysium_testnet: {
+      url: process.env.ELYSIUM_TESTNET_RPC || 'https://testnet-rpc.elysium.kinetiq.xyz',
+      chainId: 99801,
+      accounts: [`${DEV_KEY || '0x0000000000000000000000000000000000000000000000000000000000000000'}`],
+    },
   },
   etherscan: {
-    apiKey: `${ETHERSCAN_API_KEY}`,
+    apiKey: {
+      etherscan: `${ETHERSCAN_API_KEY}`,
+      hyperEvm: `${ETHERSCAN_API_KEY}`,
+      baseSepolia: `${ETHERSCAN_API_KEY}`,
+      mantleTestnet: `${ETHERSCAN_API_KEY}`,
+      mantle: `${ETHERSCAN_API_KEY}`,
+      elysium_testnet: `${ETHERSCAN_API_KEY}`,
+    },
     customChains: [
       {
         network: 'hyperEvm',
@@ -143,6 +155,14 @@ export default {
         urls: {
           apiURL: 'https://explorer.mantle.xyz/api',
           browserURL: 'https://explorer.mantle.xyz/',
+        },
+      },
+      {
+        network: 'elysium_testnet',
+        chainId: 99801,
+        urls: {
+          apiURL: 'https://elysium.kinetiq.xyz/api',
+          browserURL: 'https://elysium.kinetiq.xyz',
         },
       },
     ],

@@ -6,9 +6,10 @@ const { getConfig } = require('../../../scripts/networksConfig');
 async function main() {
   const { chainId } = await hre.ethers.provider.getNetwork();
 
-  let Config = getConfig(chainId);
+  const Config = getConfig(chainId);
 
   const [deployer] = await hre.ethers.getSigners();
+  if (!deployer) throw new Error('No deployer configured for this network');
 
   const ProxyAdminFactory = await hre.ethers.getContractFactory('ProxyAdmin');
   const proxyAdmin = await ProxyAdminFactory.deploy();
@@ -21,11 +22,11 @@ async function main() {
   // precompute
   const poolDeployerAddress = hre.ethers.getCreateAddress({
     from: deployer.address,
-    nonce: (await ethers.provider.getTransactionCount(deployer.address)) + 1,
+    nonce: (await hre.ethers.provider.getTransactionCount(deployer.address)) + 1,
   });
 
   const initializeData = AlgebraFactory.interface.encodeFunctionData('initialize', [poolDeployerAddress, deployer.address]);
-  const proxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+  const proxyFactory = await hre.ethers.getContractFactory('TransparentUpgradeableProxy');
   const proxy = await proxyFactory.deploy(algebraFactoryImplementation.target, proxyAdmin.target, initializeData); // +1
   await proxy.waitForDeployment();
 
@@ -35,6 +36,10 @@ async function main() {
   const poolDeployer = await PoolDeployerFactory.deploy(factory.target);
 
   await poolDeployer.waitForDeployment();
+
+  if (hre.ethers.getAddress(poolDeployerAddress) !== hre.ethers.getAddress(poolDeployer.target)) {
+    throw new Error(`Unexpected pool deployer address: expected ${poolDeployerAddress}, deployed ${poolDeployer.target}`);
+  }
 
   console.log('Expected poolDeployer:', poolDeployerAddress, ', actual:', poolDeployer.target);
   console.log('AlgebraPoolDeployer to:', poolDeployer.target);
@@ -56,17 +61,18 @@ async function main() {
 
   console.log('AlgebraVaultFactoryStub deployed to:', vaultFactoryStub.target);
 
-  await factory.setVaultFactory(vaultFactoryStub);
+  const setVaultFactoryTx = await factory.setVaultFactory(vaultFactoryStub);
+  await setVaultFactoryTx.wait();
 
   const deployDataPath = path.resolve(__dirname, '../../../' + Config.FILE);
-  let deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
+  const deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
   deploysData.poolDeployer = poolDeployer.target;
   deploysData.factory = factory.target;
   deploysData.algebraFactoryImplementation = algebraFactoryImplementation.target;
   deploysData.proxyAdmin = proxyAdmin.target;
   deploysData.vault = vault.target;
   deploysData.vaultFactory = vaultFactoryStub.target;
-  fs.writeFileSync(deployDataPath, JSON.stringify(deploysData), 'utf-8');
+  fs.writeFileSync(deployDataPath, `${JSON.stringify(deploysData, null, 2)}\n`, 'utf-8');
 }
 
 // We recommend this pattern to be able to use async/await everywhere

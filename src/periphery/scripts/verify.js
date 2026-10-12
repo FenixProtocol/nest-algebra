@@ -53,7 +53,7 @@ async function main() {
   });
   await hre.run('verify:verify', {
     address: deploysData.NonfungibleTokenPositionDescriptor,
-    constructorArguments: [deploysData.wrapped, 'WTLS', []],
+    constructorArguments: [deploysData.wrapped, Config.NATIVE_SYMBOL, []],
   });
 }
 

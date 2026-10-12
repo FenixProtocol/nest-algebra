@@ -7,17 +7,18 @@ const { getConfig } = require('../../../scripts/networksConfig');
 async function main() {
   const { chainId } = await hre.ethers.provider.getNetwork();
 
-  let Config = getConfig(chainId);
-
-  const [deployer] = await hre.ethers.getSigners();
+  const Config = getConfig(chainId);
 
   const deployDataPath = path.resolve(__dirname, '../../../' + Config.FILE);
   let deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
 
   // WNativeTokenAddress
   const WNativeTokenAddress = Config.WETH;
-  const signers = await hre.ethers.getSigners();
   const ProxyAdmin = deploysData.proxyAdmin;
+
+  if ((await hre.ethers.provider.getCode(WNativeTokenAddress)) === '0x') {
+    throw new Error(`Configured wrapped native token has no bytecode: ${WNativeTokenAddress}`);
+  }
 
   deploysData.wrapped = WNativeTokenAddress;
 
@@ -76,7 +77,7 @@ async function main() {
   );
   const NonfungibleTokenPositionDescriptor = await NonfungibleTokenPositionDescriptorFactory.deploy(
     WNativeTokenAddress,
-    'WHYPE',
+    Config.NATIVE_SYMBOL,
     []
   );
 
@@ -131,7 +132,7 @@ async function main() {
   console.log('AlgebraInterfaceMulticall deployed to:', AlgebraInterfaceMulticall.target);
   // console.log('V3Migrator deployed to:', V3Migrator.target);
 
-  fs.writeFileSync(deployDataPath, JSON.stringify(deploysData), 'utf-8');
+  fs.writeFileSync(deployDataPath, `${JSON.stringify(deploysData, null, 2)}\n`, 'utf-8');
 }
 
 // We recommend this pattern to be able to use async/await everywhere
