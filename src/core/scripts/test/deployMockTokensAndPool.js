@@ -31,9 +31,9 @@ async function main() {
     throw new Error('No deployer configured for this network');
   }
 
-  const TokenFactory = await hre.ethers.getContractFactory('TestERC20');
-  const tokenA = await TokenFactory.deploy(0);
-  const tokenB = await TokenFactory.deploy(0);
+  const TokenFactory = await hre.ethers.getContractFactory('MockERC20');
+  const tokenA = await TokenFactory.deploy('Mock Token A', 'MTA', 18);
+  const tokenB = await TokenFactory.deploy('Mock Token B', 'MTB', 18);
   await Promise.all([tokenA.waitForDeployment(), tokenB.waitForDeployment()]);
 
   const tokenAAddress = await tokenA.getAddress();
@@ -55,7 +55,7 @@ async function main() {
   console.log('Token 1:', token1);
   console.log('Pool:', poolAddress);
   console.log('Initial sqrt price (Q96):', Q96.toString());
-  console.log('Anyone can mint either token with mint(address,uint256)');
+  console.log('Anyone can mint tokens to themselves with mint(uint256)');
 }
 
 main()

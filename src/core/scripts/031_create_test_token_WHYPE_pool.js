@@ -5,7 +5,7 @@ const path = require('path');
 const { getConfig } = require('../../../scripts/networksConfig');
 
 const ELYSIUM_TESTNET_CHAIN_ID = 99801n;
-const TEST_TOKEN_ADDRESS = '0x42b7077e72619AC0814DE705256eC1697C94DA83';
+const TEST_TOKEN_ADDRESS = '0x71a676b41569D2C3B19a3F182b1FAEb0a06dA3ff';
 const Q96 = 1n << 96n;
 
 async function main() {
