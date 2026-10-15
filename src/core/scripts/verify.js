@@ -5,10 +5,12 @@ const { getConfig } = require('../../../scripts/networksConfig');
 
 async function main() {
   const { chainId } = await hre.ethers.provider.getNetwork();
-  let Config = getConfig(chainId);
+  const [deployer] = await hre.ethers.getSigners();
+  if (!deployer) throw new Error('No deployer configured for this network');
+  const Config = getConfig(chainId);
 
   const deployDataPath = path.resolve(__dirname, '../../../' + Config.FILE);
-  let deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
+  const deploysData = JSON.parse(fs.readFileSync(deployDataPath, 'utf8'));
 
   await hre.run('verify:verify', {
     address: deploysData.algebraFactoryImplementation,
@@ -32,11 +34,12 @@ async function main() {
 
   await hre.run('verify:verify', {
     address: deploysData.vault,
-    constructorArguments: [deploysData.factory, deploysData.poolDeployer],
+    constructorArguments: [deploysData.factory, deployer.address],
   });
 
   await hre.run('verify:verify', {
     address: deploysData.vaultFactory,
+    contract: 'contracts/AlgebraVaultFactoryStub.sol:AlgebraVaultFactoryStub',
     constructorArguments: [deploysData.vault],
   });
 }

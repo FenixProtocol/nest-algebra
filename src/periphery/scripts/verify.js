@@ -7,7 +7,7 @@ const { getConfig } = require('../../../scripts/networksConfig');
 async function main() {
   const { chainId } = await hre.ethers.provider.getNetwork();
 
-  let Config = getConfig(chainId);
+  const Config = getConfig(chainId);
 
   const [deployer] = await hre.ethers.getSigners();
 
@@ -53,7 +53,7 @@ async function main() {
   });
   await hre.run('verify:verify', {
     address: deploysData.NonfungibleTokenPositionDescriptor,
-    constructorArguments: [deploysData.wrapped, 'WTLS', []],
+    constructorArguments: [deploysData.wrapped, Config.NATIVE_SYMBOL, []],
   });
 }
 

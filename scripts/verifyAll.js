@@ -1,11 +1,18 @@
-const execSync = require('child_process').execSync;
+const { execFileSync } = require('child_process');
+const path = require('path');
 
 const network = process.argv[2];
 
-execSync(`cd src/core && npx hardhat run --network ${network} scripts/verify.js`, {stdio: 'inherit'});
+if (!network) {
+  throw new Error('Network name is required: node scripts/verifyAll.js <network>');
+}
 
-execSync(`cd src/plugin && npx hardhat run --network ${network} scripts/verify.js`, {stdio: 'inherit'});
+const packageNames = ['core', 'plugin', 'periphery', 'farming'];
+const packagesToVerify = network === 'elysium_testnet' ? packageNames.filter((packageName) => packageName !== 'farming') : packageNames;
 
-execSync(`cd src/periphery && npx hardhat run --network ${network} scripts/verify.js`, {stdio: 'inherit'});
-
-execSync(`cd src/farming && npx hardhat run --network ${network} scripts/verify.js`, {stdio: 'inherit'});
+for (const packageName of packagesToVerify) {
+  execFileSync('npx', ['hardhat', 'run', '--network', network, 'scripts/verify.js'], {
+    cwd: path.resolve(__dirname, `../src/${packageName}`),
+    stdio: 'inherit',
+  });
+}
