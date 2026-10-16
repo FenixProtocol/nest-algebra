@@ -44,6 +44,16 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   bool public override isPublicPoolCreationMode;
 
   mapping(address pool => address plugin) public override pluginByPool;
+
+  struct MevxConfig {
+    address mevxRouter;
+    address mevxExecutor;
+    address profitDistributor;
+    bytes32 configId;
+  }
+
+  /// @inheritdoc INestFeePluginFactory
+  MevxConfig public override defaultMevxConfig;
   mapping(address pool => bool created) public override isCustomPool;
   mapping(address pool => PendingCustomPool pendingPool) private _pendingCustomPoolByAddress;
 
@@ -183,6 +193,12 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     require(twapWindow >= 60 && twapWindow <= 12 hours, 'Invalid TWAP window');
     defaultDeviationFeeConfiguration = DeviationFeeConfig(baseFee, feeCap, scalingFactor, twapWindow);
     emit DefaultDeviationFeeConfiguration(baseFee, feeCap, scalingFactor, twapWindow);
+  }
+
+  /// @inheritdoc INestFeePluginFactory
+  function setDefaultMevxConfig(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external override onlyAdministrator {
+    defaultMevxConfig = MevxConfig(mevxRouter, mevxExecutor, profitDistributor, configId);
+    emit DefaultMevxConfig(mevxRouter, mevxExecutor, profitDistributor, configId);
   }
 
   /// @inheritdoc INestFeePluginFactory

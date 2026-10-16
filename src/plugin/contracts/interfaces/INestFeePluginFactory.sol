@@ -18,6 +18,8 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
   /// @param twapWindow The default TWAP lookback window, in seconds
   event DefaultDeviationFeeConfiguration(uint16 baseFee, uint16 feeCap, uint64 scalingFactor, uint32 twapWindow);
 
+  event DefaultMevxConfig(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId);
+
   /// @notice Emitted when the farming address is changed
   /// @param newFarmingAddress The farming address after the address was changed
   event FarmingAddress(address newFarmingAddress);
@@ -48,6 +50,9 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
 
   /// @notice Current default deviation fee configuration, set in new plugins at creation
   function defaultDeviationFeeConfiguration() external view returns (uint16 baseFee, uint16 feeCap, uint64 scalingFactor, uint32 twapWindow);
+
+  /// @notice MEVX settings written into every new plugin
+  function defaultMevxConfig() external view returns (address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId);
 
   /// @notice Returns current farming address
   /// @return The farming contract address
@@ -87,6 +92,9 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
 
   /// @notice Changes the default deviation fee configuration for new plugins
   function setDefaultDeviationFeeConfiguration(uint16 baseFee, uint16 feeCap, uint64 scalingFactor, uint32 twapWindow) external;
+
+  /// @notice Changes the MEVX settings written into new plugins; existing plugins keep theirs
+  function setDefaultMevxConfig(address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) external;
 
   /// @dev updates farmings manager address on the factory
   /// @param newFarmingAddress The new tokenomics contract address

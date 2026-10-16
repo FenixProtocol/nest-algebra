@@ -37,9 +37,10 @@ const NEST_PLUGIN_COMPILER_SETTINGS: SolcUserConfig = {
   version: '0.8.20',
   settings: {
     evmVersion: 'paris',
+    viaIR: true,
     optimizer: {
       enabled: true,
-      runs: 800,
+      runs: 200,
     },
     metadata: {
       bytecodeHash: 'none',
