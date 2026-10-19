@@ -81,7 +81,13 @@ if (process.env.RUN_COVERAGE == '1') {
 }
 
 export default {
-  networks: baseConfig.networks,
+  networks: {
+    ...baseConfig.networks,
+    hyperevmFork: {
+      url: process.env.FORK_URL || 'http://127.0.0.1:8545',
+      timeout: 600_000,
+    },
+  },
   etherscan: baseConfig.etherscan,
   typechain: {
     outDir: 'typechain',
