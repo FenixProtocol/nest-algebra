@@ -15,6 +15,7 @@ import './interfaces/INestFeePluginFactory.sol';
 import './interfaces/IAlgebraVirtualPool.sol';
 
 import './libraries/VolatilityOracle.sol';
+import './base/MevxPlugin.sol';
 
 /// @title Nest self-TWAP fee plugin
 /// @notice Independently deployable Nest MEV-resistant fee. Stores timepoints and computes a dynamic fee from the deviation
@@ -26,7 +27,7 @@ import './libraries/VolatilityOracle.sol';
 /// fee is charged to the complete swap at its pre-swap value.
 /// Economic protection depends on liquidity, trade size, execution path and external-market costs;
 /// the configured slope alone is not a profitability proof.
-contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable, TimestampUpgradeable {
+contract NestTWAPFeePlugin is INestTWAPFeePlugin, MevxPlugin, IAlgebraPlugin, Initializable, TimestampUpgradeable {
   using Plugins for uint8;
 
   uint256 internal constant UINT16_MODULO = 65536;
@@ -51,13 +52,20 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
 
   /// @inheritdoc IAlgebraPlugin
   uint8 public constant override defaultPluginConfig =
-    uint8(Plugins.AFTER_INIT_FLAG | Plugins.BEFORE_SWAP_FLAG | Plugins.BEFORE_POSITION_MODIFY_FLAG | Plugins.BEFORE_FLASH_FLAG | Plugins.DYNAMIC_FEE);
+    uint8(
+      Plugins.AFTER_INIT_FLAG |
+        Plugins.BEFORE_SWAP_FLAG |
+        Plugins.AFTER_SWAP_FLAG |
+        Plugins.BEFORE_POSITION_MODIFY_FLAG |
+        Plugins.BEFORE_FLASH_FLAG |
+        Plugins.DYNAMIC_FEE
+    );
 
   /// @inheritdoc IFarmingPlugin
   address public override pool;
   // Shared with NestMEVFeePlugin for inherited authorization checks.
   address internal factory;
-  address internal pluginFactory;
+  address public override pluginFactory;
 
   /// @inheritdoc IVolatilityOracle
   VolatilityOracle.Timepoint[UINT16_MODULO] public override timepoints;
@@ -98,6 +106,10 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   function initialize(address _pool, address _factory, address _pluginFactory) external override initializer {
     require(msg.sender == _pluginFactory, 'Only plugin factory');
     (factory, pool, pluginFactory) = (_factory, _pool, _pluginFactory);
+
+    (address mevxRouter, address mevxExecutor, address profitDistributor, bytes32 configId) = INestFeePluginFactory(_pluginFactory)
+      .defaultMevxConfig();
+    _setMevxConfig(mevxRouter, mevxExecutor, profitDistributor, configId);
   }
 
   /// @inheritdoc INestTWAPFeeManager
@@ -146,6 +158,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
     isInitialized = true;
 
     _updatePluginConfigInPool();
+    _initializeMevxPool();
   }
 
   // ###### Volatility and TWAP oracle ######
@@ -354,6 +367,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
     isInitialized = true;
 
     IAlgebraPool(pool).setFee(_baseFee);
+    _initializeMevxPool();
     return IAlgebraPlugin.afterInitialize.selector;
   }
 
@@ -367,22 +381,33 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4) {
+  function beforeSwap(address sender, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4) {
     // single pre-swap pool-state snapshot, shared by the oracle write and the fee update
     (, int24 tick, uint16 fee, ) = _getPoolState();
     _writeTimepoint(tick);
     _updateDeviationFee(tick, fee);
+
+    _mevxBeforeSwap(sender);
     return IAlgebraPlugin.beforeSwap.selector;
   }
 
-  function afterSwap(address, address, bool zeroToOne, int256, uint160, int256, int256, bytes calldata) external override onlyPool returns (bytes4) {
+  function afterSwap(
+    address sender,
+    address recipient,
+    bool zeroToOne,
+    int256,
+    uint160,
+    int256 amount0,
+    int256 amount1,
+    bytes calldata
+  ) external override onlyPool returns (bytes4) {
     address _incentive = incentive;
     if (_incentive != address(0)) {
       (, int24 tick, , ) = _getPoolState();
       IAlgebraVirtualPool(_incentive).crossTo(tick, zeroToOne);
-    } else {
-      _updatePluginConfigInPool(); // should not be called, reset config
     }
+
+    _mevxAfterSwap(sender, recipient, zeroToOne, amount0, amount1);
 
     return IAlgebraPlugin.afterSwap.selector;
   }
@@ -395,6 +420,14 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   function afterFlash(address, address, uint256, uint256, uint256, uint256, bytes calldata) external override onlyPool returns (bytes4) {
     _updatePluginConfigInPool(); // should not be called, reset config
     return IAlgebraPlugin.afterFlash.selector;
+  }
+
+  function _mevxPool() internal view override returns (address) {
+    return pool;
+  }
+
+  function _isMevxManager(address account) internal view override returns (bool) {
+    return account == pluginFactory || IAlgebraFactory(factory).hasRoleOrOwner(MEVX_MANAGER, account);
   }
 
   function _updatePluginConfigInPool() internal {

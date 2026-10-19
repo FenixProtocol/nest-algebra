@@ -37,9 +37,10 @@ const NEST_PLUGIN_COMPILER_SETTINGS: SolcUserConfig = {
   version: '0.8.20',
   settings: {
     evmVersion: 'paris',
+    viaIR: true,
     optimizer: {
       enabled: true,
-      runs: 800,
+      runs: 200,
     },
     metadata: {
       bytecodeHash: 'none',
@@ -80,7 +81,13 @@ if (process.env.RUN_COVERAGE == '1') {
 }
 
 export default {
-  networks: baseConfig.networks,
+  networks: {
+    ...baseConfig.networks,
+    hyperevmFork: {
+      url: process.env.FORK_URL || 'http://127.0.0.1:8545',
+      timeout: 600_000,
+    },
+  },
   etherscan: baseConfig.etherscan,
   typechain: {
     outDir: 'typechain',
