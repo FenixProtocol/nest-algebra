@@ -153,6 +153,7 @@ contract NonfungiblePositionManager is
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
     {
+        require(params.token0 < params.token1, 'Invalid order of tokens');
         return _mintAlgebraPosition(params);
     }
 

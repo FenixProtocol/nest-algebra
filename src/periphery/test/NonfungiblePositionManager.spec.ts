@@ -141,6 +141,26 @@ describe('NonfungiblePositionManager', () => {
   });
 
   describe('#mint', () => {
+    it('fails if token0 is greater than token1', async () => {
+      await nft.createAndInitializePoolIfNecessary(tokens[0], tokens[1], encodePriceSqrt(1, 1));
+
+      await expect(
+        nft.mint({
+          token0: tokens[1],
+          token1: tokens[0],
+          deployer: ZeroAddress,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          recipient: wallet.address,
+          deadline: 1,
+        })
+      ).to.be.reverted;
+    });
+
     it('fails if pool does not exist', async () => {
       await expect(
         nft.mint({
