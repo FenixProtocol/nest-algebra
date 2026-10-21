@@ -11,11 +11,17 @@ For every custom deployer, only one pool can exist for a given token pair. A cla
 
 ## Deployment and permissions
 
-For an upgraded Algebra factory, deploy a compatible `AlgebraPoolDeployer` and call the owner-only, one-time reinitializer:
+For an upgraded Algebra factory, deploy a compatible `AlgebraPoolDeployer` and the new factory implementation. Encode the one-time
+`setPoolDeployer` reinitializer and pass it directly to `ProxyAdmin.upgradeAndCall`:
 
 ```solidity
-factory.setPoolDeployer(address(newPoolDeployer));
+bytes memory data = abi.encodeCall(AlgebraFactoryUpgradeable.setPoolDeployer, (address(newPoolDeployer)));
+proxyAdmin.upgradeAndCall(factoryProxy, address(newFactoryImplementation), data);
 ```
+
+The upgrade and reinitializer must execute atomically in this single transaction. Never call `setPoolDeployer` as a standalone transaction before
+or after the upgrade. The function intentionally has no `onlyOwner` modifier so `ProxyAdmin` can call it through the transparent proxy during
+`upgradeAndCall`; its protection is the proxy-admin-controlled upgrade plus the one-time `reinitializer(2)` guard.
 
 Then deploy `AlgebraCustomPoolEntryPoint` with the factory address and configure the control plane:
 

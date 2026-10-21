@@ -6,6 +6,10 @@ Use `address(0)` as the deployer value whenever interacting with classic pools t
 
 Important deployment note: after this upgrade, the Algebra factory points to a new `poolDeployer` address. Any backend, indexer, SDK, subgraph, script, or off-chain service that computes pool addresses locally from the old `poolDeployer` address will compute wrong addresses for newly created pools. Update that logic to use the current `factory.poolDeployer()`, `factory.computePoolAddress(...)`, `factory.computeCustomPoolAddress(...)`, or the factory registry mappings.
 
+The factory upgrade and pool-deployer update must be atomic. Pass the encoded `setPoolDeployer` call as the `data` argument to
+`ProxyAdmin.upgradeAndCall`; never upgrade first and call `setPoolDeployer` in a later transaction. The reinitializer intentionally has no
+`onlyOwner` check so that `ProxyAdmin` can execute it during the upgrade, and a separate transaction would leave it exposed to another caller.
+
 ## ABI and functionality changes
 
 ### Core factory
@@ -28,7 +32,7 @@ mapping(address => address) public deployerByPool;
 New or changed functions:
 
 ```solidity
-function setPoolDeployer(address newPoolDeployer) external reinitializer(2) onlyOwner;
+function setPoolDeployer(address _poolDeployer) external reinitializer(2);
 
 function computeCustomPoolAddress(
   address customDeployer,
@@ -330,28 +334,39 @@ Internal library changes:
 Recommended setup:
 
 1. Deploy the new `AlgebraPoolDeployer` with the Algebra factory address.
-2. Call `AlgebraFactoryUpgradeable.setPoolDeployer(newPoolDeployer)` by factory owner. This is a `reinitializer(2)` function and is intended to run once.
-3. Deploy and initialize `AlgebraCustomPoolEntryPoint` with the Algebra factory address.
-4. Deploy the plugin implementation used by custom pool plugins.
-5. Deploy `BaseV1PluginFactory` with its constructor dependencies:
+2. Deploy the new `AlgebraFactoryUpgradeable` implementation.
+3. From the owner of `ProxyAdmin`, call `ProxyAdmin.upgradeAndCall` with the factory proxy, the new implementation, and an encoded
+   `setPoolDeployer(newPoolDeployer)` call. This must be one atomic transaction:
+
+```solidity
+bytes memory data = abi.encodeCall(AlgebraFactoryUpgradeable.setPoolDeployer, (address(newPoolDeployer)));
+proxyAdmin.upgradeAndCall(factoryProxy, address(newFactoryImplementation), data);
+```
+
+Do not call `setPoolDeployer` before or after `upgradeAndCall`. It is an unguarded `reinitializer(2)` whose authorization comes from being
+executed as part of the proxy-admin-controlled upgrade; once successful, initializer version 2 prevents another call.
+
+4. Deploy and initialize `AlgebraCustomPoolEntryPoint` with the Algebra factory address.
+5. Deploy the plugin implementation used by custom pool plugins.
+6. Deploy `BaseV1PluginFactory` with its constructor dependencies:
 
 ```solidity
 new BaseV1PluginFactory(algebraFactory, algebraCustomPoolEntryPoint, pluginImplementation)
 ```
 
-6. Grant the entry point `CUSTOM_POOL_DEPLOYER` on the Algebra factory:
+7. Grant the entry point `CUSTOM_POOL_DEPLOYER` on the Algebra factory:
 
 ```solidity
 AlgebraFactoryUpgradeable.grantRole(CUSTOM_POOL_DEPLOYER, algebraCustomPoolEntryPoint);
 ```
 
-7. Whitelist `BaseV1PluginFactory` as a custom deployer in the entry point:
+8. Whitelist `BaseV1PluginFactory` as a custom deployer in the entry point:
 
 ```solidity
 AlgebraCustomPoolEntryPoint.setCustomPoolDeployer(baseV1PluginFactory, true);
 ```
 
-8. Create a custom pool:
+9. Create a custom pool:
 
 ```solidity
 BaseV1PluginFactory.deployCustomPool(tokenA, tokenB, data);

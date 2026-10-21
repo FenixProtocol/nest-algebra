@@ -105,7 +105,10 @@ describe('AlgebraFactoryUpgradeable', () => {
     const factoryImplementation = await factoryFactory.deploy();
     const proxyAdmin = await ethers.deployContract('ProxyAdmin');
     const proxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
-    const initializeData = factoryFactory.interface.encodeFunctionData('initialize', [poolDeployer.target, other.address]);
+    const initializeData = factoryFactory.interface.encodeFunctionData('initialize', [
+      poolDeployer.target,
+      other.address,
+    ]);
     const proxy = await proxyFactory.deploy(factoryImplementation.target, proxyAdmin.target, initializeData);
     const initializedFactory = factoryFactory.attach(proxy.target) as any as AlgebraFactoryUpgradeable;
 
@@ -161,38 +164,41 @@ describe('AlgebraFactoryUpgradeable', () => {
     await expect(factory.initialize(ZERO_ADDRESS, wallet.address)).to.be.reverted;
   });
 
-  describe('#setPoolDeployer', () => {
-    async function deployPoolDeployer() {
+  describe('#setPoolDeployer upgrade', () => {
+    it('atomically upgrades and updates the pool deployer through ProxyAdmin', async () => {
+      const legacyFactoryFactory = await ethers.getContractFactory('AlgebraFactoryUpgradeableV1Mock');
+      const legacyImplementation = await legacyFactoryFactory.deploy();
+      const proxyAdmin = await ethers.deployContract('ProxyAdmin');
+      const proxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
+      const initializeV1Data = legacyFactoryFactory.interface.encodeFunctionData('initializeV1', [
+        poolDeployer.target,
+        wallet.address,
+      ]);
+      const proxy = await proxyFactory.deploy(legacyImplementation.target, proxyAdmin.target, initializeV1Data);
+
       const poolDeployerFactory = await ethers.getContractFactory('AlgebraPoolDeployer');
-      return (await poolDeployerFactory.deploy(factory)) as any as AlgebraPoolDeployer;
-    }
+      const newPoolDeployer = (await poolDeployerFactory.deploy(proxy.target)) as any as AlgebraPoolDeployer;
+      const factoryFactory = await ethers.getContractFactory('AlgebraFactoryUpgradeable');
+      const newImplementation = await factoryFactory.deploy();
+      const initializeV2Data = factoryFactory.interface.encodeFunctionData('setPoolDeployer', [newPoolDeployer.target]);
 
-    it('fails if called by non-owner', async () => {
-      const newPoolDeployer = await deployPoolDeployer();
+      await expect(proxyAdmin.upgradeAndCall(proxy, newImplementation, initializeV2Data))
+        .to.emit(factoryFactory.attach(proxy.target), 'PoolDeployer')
+        .withArgs(newPoolDeployer.target);
 
-      await expect(factory.connect(other).setPoolDeployer(newPoolDeployer)).to.be.revertedWith('Ownable: caller is not the owner');
+      const upgradedFactory = factoryFactory.attach(proxy.target) as any as AlgebraFactoryUpgradeable;
+      expect(await upgradedFactory.poolDeployer()).to.eq(newPoolDeployer.target);
+      expect(await upgradedFactory.owner()).to.eq(wallet.address);
+      await expect(upgradedFactory.createPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1])).to.emit(upgradedFactory, 'Pool');
     });
 
-    it('fails if new pool deployer is zero', async () => {
-      await expect(factory.setPoolDeployer(ZERO_ADDRESS)).to.be.reverted;
-    });
-
-    it('updates pool deployer and emits event', async () => {
-      const newPoolDeployer = await deployPoolDeployer();
-
-      await expect(factory.setPoolDeployer(newPoolDeployer))
+    it('can set the pool deployer once after a fresh deployment', async () => {
+      await expect(factory.connect(other).setPoolDeployer(other.address))
         .to.emit(factory, 'PoolDeployer')
-        .withArgs(await newPoolDeployer.getAddress());
-
-      expect(await factory.poolDeployer()).to.eq(await newPoolDeployer.getAddress());
-    });
-
-    it('can only be called once', async () => {
-      const firstPoolDeployer = await deployPoolDeployer();
-      const secondPoolDeployer = await deployPoolDeployer();
-
-      await factory.setPoolDeployer(firstPoolDeployer);
-      await expect(factory.setPoolDeployer(secondPoolDeployer)).to.be.revertedWith('Initializable: contract is already initialized');
+        .withArgs(other.address);
+      await expect(factory.setPoolDeployer(poolDeployer.target)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      );
     });
   });
 
@@ -300,7 +306,8 @@ describe('AlgebraFactoryUpgradeable', () => {
     });
 
     it('fails if trying to create via pool deployer directly', async () => {
-      await expect(poolDeployer.deploy(TEST_ADDRESSES[0], TEST_ADDRESSES[0], TEST_ADDRESSES[0], ZeroAddress)).to.be.reverted;
+      await expect(poolDeployer.deploy(TEST_ADDRESSES[0], TEST_ADDRESSES[0], TEST_ADDRESSES[0], ZeroAddress)).to.be
+        .reverted;
     });
 
     it('fails if token a == token b', async () => {

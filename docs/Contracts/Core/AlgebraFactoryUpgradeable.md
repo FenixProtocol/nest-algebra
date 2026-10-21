@@ -161,15 +161,17 @@ function initialize(address _poolDeployer, address _initOwner) external
 ### setPoolDeployer
 
 ```solidity
-function setPoolDeployer(address newPoolDeployer) external
+function setPoolDeployer(address _poolDeployer) external
 ```
 **Selector**: `0x1aa3e95d`
 
 Updates the pool deployer after upgrading an existing factory proxy.
 
+*Developer note: Must be passed as the initialization calldata to `ProxyAdmin.upgradeAndCall` so the proxy upgrade and reinitializer execute atomically. Do not call this function in a separate transaction.*
+
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| newPoolDeployer | address | The new pool deployer instance |
+| _poolDeployer | address | The new pool deployer instance |
 
 ### owner
 

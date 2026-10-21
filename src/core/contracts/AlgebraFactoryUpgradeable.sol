@@ -81,7 +81,6 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
     __Ownable2Step_init();
     _transferOwnership(_initOwner);
 
-    poolDeployer = _poolDeployer;
     defaultTickspacing = Constants.INIT_DEFAULT_TICK_SPACING;
     defaultFee = Constants.INIT_DEFAULT_FEE;
 
@@ -89,14 +88,20 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
 
     emit DefaultTickspacing(Constants.INIT_DEFAULT_TICK_SPACING);
     emit DefaultFee(Constants.INIT_DEFAULT_FEE);
+
+    _setPoolDeployer(_poolDeployer);
   }
 
   /// @notice Updates the pool deployer after upgrading an existing factory proxy.
-  /// @param newPoolDeployer The new pool deployer instance
-  function setPoolDeployer(address newPoolDeployer) external reinitializer(2) onlyOwner {
-    require(newPoolDeployer != address(0));
-    poolDeployer = newPoolDeployer;
-    emit PoolDeployer(newPoolDeployer);
+  /// @dev Must be called atomically with the proxy upgrade.
+  function setPoolDeployer(address _poolDeployer) external reinitializer(2) {
+    require(_poolDeployer != address(0));
+    _setPoolDeployer(_poolDeployer);
+  }
+
+  function _setPoolDeployer(address _poolDeployer) private {
+    poolDeployer = _poolDeployer;
+    emit PoolDeployer(_poolDeployer);
   }
 
   /// @inheritdoc IAlgebraFactory
