@@ -4,6 +4,8 @@ pragma solidity >=0.6.0;
 import './BytesLib.sol';
 
 /// @title Functions for manipulating path data for multihop swaps
+/// @notice A path is tightly encoded as `token, deployer, token, ...`, where each element is a 20-byte address
+/// and deployer is address(0) for a classic pool
 /// @dev Credit to Uniswap Labs under GPL-2.0-or-later license:
 /// https://github.com/Uniswap/v3-periphery
 library Path {

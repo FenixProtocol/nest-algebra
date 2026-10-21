@@ -6,6 +6,7 @@ import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import './PoolAddress.sol';
 
 /// @notice Provides validation for callbacks from Algebra Pools
+/// @dev Pools are resolved through the factory registry. The factory address must not be replaced with a pool deployer address
 /// @dev Credit to Uniswap Labs under GPL-2.0-or-later license:
 /// https://github.com/Uniswap/v3-periphery
 library CallbackValidation {
