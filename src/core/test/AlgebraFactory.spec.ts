@@ -339,6 +339,32 @@ describe('AlgebraFactoryUpgradeable', () => {
   });
 
   describe('#createCustomPool', () => {
+    it('computes and registers the future custom pool address before creation hooks', async () => {
+      const customDeployer = await defaultPluginFactory.getAddress();
+      const [token0, token1] =
+        TEST_ADDRESSES[0].toLowerCase() < TEST_ADDRESSES[1].toLowerCase()
+          ? [TEST_ADDRESSES[0], TEST_ADDRESSES[1]]
+          : [TEST_ADDRESSES[1], TEST_ADDRESSES[0]];
+      const futurePool = await factory.computeCustomPoolAddress(customDeployer, token0, token1);
+
+      expect(await ethers.provider.getCode(futurePool)).to.eq('0x');
+      expect(await factory.customPoolByPair(customDeployer, token0, token1)).to.eq(ZeroAddress);
+      expect(await factory.deployerByPool(futurePool)).to.eq(ZeroAddress);
+
+      await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), customDeployer);
+      await defaultPluginFactory.createCustomPool(await factory.getAddress(), wallet.address, token1, token0, '0x');
+
+      expect(await defaultPluginFactory.isCustomPoolRegisteredBeforeHook()).to.be.true;
+      expect(await defaultPluginFactory.customPoolCodeSizeBeforeHook()).to.eq(0);
+      expect(await defaultPluginFactory.pluginsForPools(futurePool)).to.not.eq(ZeroAddress);
+      expect(await defaultPluginFactory.isCustomPoolRegisteredAfterHook()).to.be.true;
+      expect(await defaultPluginFactory.customPoolCodeSizeAfterHook()).to.be.greaterThan(0);
+      expect(await ethers.provider.getCode(futurePool)).to.not.eq('0x');
+      expect(await factory.customPoolByPair(customDeployer, token0, token1)).to.eq(futurePool);
+      expect(await factory.customPoolByPair(customDeployer, token1, token0)).to.eq(futurePool);
+      expect(await factory.deployerByPool(futurePool)).to.eq(customDeployer);
+    });
+
     it('sets deployerByPool to custom deployer', async () => {
       const customDeployer = await defaultPluginFactory.getAddress();
       const [token0, token1] =

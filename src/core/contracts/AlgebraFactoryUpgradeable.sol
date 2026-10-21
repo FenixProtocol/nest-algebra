@@ -175,23 +175,17 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
     (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     require(token0 != address(0));
     require(customPoolByPair[customDeployer][token0][token1] == address(0));
+    customPool = computeCustomPoolAddress(customDeployer, token0, token1);
+    customPoolByPair[customDeployer][token0][token1] = customPool;
+    customPoolByPair[customDeployer][token1][token0] = customPool;
+    deployerByPool[customPool] = customDeployer;
 
-    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(
-      computeCustomPoolAddress(customDeployer, token0, token1),
-      creator,
-      customDeployer,
-      token0,
-      token1,
-      data
-    );
+    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(customPool, creator, customDeployer, token0, token1, data);
 
     customPool = IAlgebraPoolDeployer(poolDeployer).deploy(plugin, token0, token1, customDeployer);
 
     IAlgebraPluginFactory(msg.sender).afterCreatePoolHook(plugin, customPool, customDeployer);
 
-    customPoolByPair[customDeployer][token0][token1] = customPool;
-    customPoolByPair[customDeployer][token1][token0] = customPool;
-    deployerByPool[customPool] = customDeployer;
     emit CustomPool(customDeployer, token0, token1, customPool);
 
     if (address(vaultFactory) != address(0)) {
