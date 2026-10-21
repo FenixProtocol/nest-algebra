@@ -151,6 +151,10 @@ describe('AlgebraCustomPoolEntryPoint', () => {
     expect(await factory.customPoolByPair(customDeployer, token0, token1)).to.eq(
       await factory.computeCustomPoolAddress(customDeployer, token0, token1)
     );
+    expect(await pluginFactory.isCustomPoolRegisteredBeforeHook()).to.be.true;
+    expect(await pluginFactory.customPoolCodeSizeBeforeHook()).to.eq(0);
+    expect(await pluginFactory.isCustomPoolRegisteredAfterHook()).to.be.true;
+    expect(await pluginFactory.customPoolCodeSizeAfterHook()).to.be.greaterThan(0);
   });
 
   it('requires the deployer to be the sender even when it is whitelisted', async () => {

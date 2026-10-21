@@ -6,6 +6,10 @@ import '../interfaces/plugin/IAlgebraPluginFactory.sol';
 import '../interfaces/IAlgebraFactory.sol';
 import './MockPoolPlugin.sol';
 
+interface IFactoryProvider {
+  function factory() external view returns (address);
+}
+
 // used for testing time dependent behavior
 contract MockDefaultPluginFactory is IAlgebraPluginFactory {
   mapping(address => address) public pluginsForPools;
@@ -27,7 +31,7 @@ contract MockDefaultPluginFactory is IAlgebraPluginFactory {
     address token1,
     bytes calldata
   ) external override returns (address plugin) {
-    IAlgebraFactory factory = IAlgebraFactory(msg.sender);
+    IAlgebraFactory factory = _factory();
     isCustomPoolRegisteredBeforeHook =
       factory.customPoolByPair(customDeployer, token0, token1) == pool &&
       factory.deployerByPool(pool) == customDeployer;
@@ -37,8 +41,16 @@ contract MockDefaultPluginFactory is IAlgebraPluginFactory {
   }
 
   function afterCreatePoolHook(address, address pool, address customDeployer) external override {
-    isCustomPoolRegisteredAfterHook = IAlgebraFactory(msg.sender).deployerByPool(pool) == customDeployer;
+    isCustomPoolRegisteredAfterHook = _factory().deployerByPool(pool) == customDeployer;
     customPoolCodeSizeAfterHook = pool.code.length;
+  }
+
+  function _factory() private view returns (IAlgebraFactory factory) {
+    try IFactoryProvider(msg.sender).factory() returns (address actualFactory) {
+      factory = IAlgebraFactory(actualFactory);
+    } catch {
+      factory = IAlgebraFactory(msg.sender);
+    }
   }
 
   function createCustomPool(
