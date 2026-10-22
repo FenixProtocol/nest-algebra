@@ -106,9 +106,9 @@ Deploys new plugin contract for pool
 ### beforeCreatePoolHook
 
 ```solidity
-function beforeCreatePoolHook(address, address, address, address, address, bytes) external pure returns (address)
+function beforeCreatePoolHook(address, address, address, address, address) external pure returns (address)
 ```
-**Selector**: `0x1d0338d9`
+**Selector**: `0xf13f29fb`
 
 This factory does not support the custom pool creation hook flow.
 
@@ -122,7 +122,6 @@ the updated IAlgebraPluginFactory interface, which includes hook methods for cus
 |  | address |  |
 |  | address |  |
 |  | address |  |
-|  | bytes |  |
 
 **Returns:**
 

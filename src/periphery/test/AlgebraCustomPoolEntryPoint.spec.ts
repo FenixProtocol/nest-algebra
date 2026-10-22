@@ -66,8 +66,7 @@ describe('AlgebraCustomPoolEntryPoint', () => {
       await entryPoint.getAddress(),
       wallet.address,
       TEST_ADDRESSES[0],
-      TEST_ADDRESSES[1],
-      '0x'
+      TEST_ADDRESSES[1]
     );
 
     const poolAddress = await factory.customPoolByPair(deployerAddress, token0, token1);
@@ -129,8 +128,7 @@ describe('AlgebraCustomPoolEntryPoint', () => {
         await entryPoint.getAddress(),
         wallet.address,
         TEST_ADDRESSES[0],
-        TEST_ADDRESSES[1],
-        '0x'
+        TEST_ADDRESSES[1]
       )
     ).to.be.revertedWith('Can`t create custom pools');
   });
@@ -144,8 +142,7 @@ describe('AlgebraCustomPoolEntryPoint', () => {
       await entryPoint.getAddress(),
       wallet.address,
       TEST_ADDRESSES[0],
-      TEST_ADDRESSES[1],
-      '0x'
+      TEST_ADDRESSES[1]
     );
 
     expect(await factory.customPoolByPair(customDeployer, token0, token1)).to.eq(
@@ -162,7 +159,7 @@ describe('AlgebraCustomPoolEntryPoint', () => {
 
     await entryPoint.setCustomPoolDeployer(customDeployer, true);
     await expect(
-      entryPoint.createCustomPool(customDeployer, wallet.address, TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')
+      entryPoint.createCustomPool(customDeployer, wallet.address, TEST_ADDRESSES[0], TEST_ADDRESSES[1])
     ).to.be.revertedWith('Only deployer');
   });
 

@@ -321,11 +321,6 @@
           "internalType": "address",
           "name": "tokenB",
           "type": "address"
-        },
-        {
-          "internalType": "bytes",
-          "name": "data",
-          "type": "bytes"
         }
       ],
       "name": "createCustomPool",

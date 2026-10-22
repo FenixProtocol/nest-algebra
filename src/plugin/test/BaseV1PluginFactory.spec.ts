@@ -7,6 +7,9 @@ import { AlgebraBasePluginV1, BaseV1PluginFactory } from '../typechain';
 import { expect } from './shared/expect';
 import snapshotGasCost from './shared/snapshotGasCost';
 import { customPoolEnvironmentFixture, sortAddresses, TEST_ADDRESSES } from './shared/customPoolFixtures';
+import { MAX_SQRT_RATIO } from './shared/utilities';
+
+const SQRT_PRICE_1 = 79228162514264337593543950336n;
 
 describe('BaseV1PluginFactory', () => {
   let wallet: Wallet, other: Wallet;
@@ -56,7 +59,7 @@ describe('BaseV1PluginFactory', () => {
   it('reverts custom pool deployment when caller lacks deployer role in private mode', async () => {
     const { baseV1Factory } = await loadFixture(fixture);
 
-    await expect(baseV1Factory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')).to.be.revertedWith(
+    await expect(baseV1Factory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1)).to.be.revertedWith(
       `AccessControl: account ${other.address.toLowerCase()} is missing role ${await baseV1Factory.CUSTOM_POOL_DEPLOYER()}`
     );
   });
@@ -66,9 +69,9 @@ describe('BaseV1PluginFactory', () => {
     const [token0, token1] = sortAddresses(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
 
     const expectedPool = await factory.computeCustomPoolAddress(await baseV1Factory.getAddress(), token0, token1);
-    expect(await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[1], TEST_ADDRESSES[0], '0x1234')).to.eq(expectedPool);
+    expect(await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[1], TEST_ADDRESSES[0], SQRT_PRICE_1)).to.eq(expectedPool);
 
-    await expect(baseV1Factory.deployCustomPool(TEST_ADDRESSES[1], TEST_ADDRESSES[0], '0x1234')).to.emit(factory, 'CustomPool');
+    await expect(baseV1Factory.deployCustomPool(TEST_ADDRESSES[1], TEST_ADDRESSES[0], SQRT_PRICE_1)).to.emit(factory, 'CustomPool');
 
     expect(await baseV1Factory.isCustomPool(expectedPool)).to.be.true;
     const pluginAddress = await baseV1Factory.pluginByPool(expectedPool);
@@ -77,10 +80,30 @@ describe('BaseV1PluginFactory', () => {
     const poolFactory = await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE);
     const pool = poolFactory.attach(expectedPool) as any as AlgebraPool;
     expect(await pool.plugin()).to.eq(pluginAddress);
+    expect((await pool.globalState()).price).to.eq(SQRT_PRICE_1);
+    await expect(pool.initialize(SQRT_PRICE_1)).to.be.revertedWithCustomError(pool, 'alreadyInitialized');
 
     const plugin = (await ethers.getContractAt('AlgebraBasePluginV1', pluginAddress)) as any as AlgebraBasePluginV1;
     expect(await plugin.pool()).to.eq(expectedPool);
     expect(await plugin.feeConfig()).to.deep.eq([2900n, 12000n, 360n, 60000n, 59n, 8500n, 100n]);
+  });
+
+  it('atomically rolls back custom pool creation when the initial price is invalid', async () => {
+    const { factory, baseV1Factory } = await loadFixture(fixture);
+    const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
+    const deployer = await baseV1Factory.getAddress();
+    const expectedPool = await factory.computeCustomPoolAddress(deployer, token0, token1);
+    const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(expectedPool) as any as AlgebraPool;
+
+    await expect(baseV1Factory.deployCustomPool(token0, token1, MAX_SQRT_RATIO)).to.be.revertedWithCustomError(pool, 'priceOutOfRange');
+    expect(await factory.customPoolByPair(deployer, token0, token1)).to.eq(ZeroAddress);
+    expect(await factory.deployerByPool(expectedPool)).to.eq(ZeroAddress);
+    expect(await baseV1Factory.pluginByPool(expectedPool)).to.eq(ZeroAddress);
+    expect(await baseV1Factory.isCustomPool(expectedPool)).to.be.false;
+    expect(await ethers.provider.getCode(expectedPool)).to.eq('0x');
+
+    await baseV1Factory.deployCustomPool(token0, token1, SQRT_PRICE_1);
+    expect((await pool.globalState()).price).to.eq(SQRT_PRICE_1);
   });
 
   it('creates and initializes a plugin for a standard pool', async () => {
@@ -123,7 +146,7 @@ describe('BaseV1PluginFactory', () => {
     const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[2]);
     const expectedPool = await factory.computeCustomPoolAddress(await baseV1Factory.getAddress(), token0, token1);
 
-    await baseV1Factory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[2], '0x');
+    await baseV1Factory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[2], SQRT_PRICE_1);
     expect(await baseV1Factory.isCustomPool(expectedPool)).to.be.true;
   });
 
@@ -132,14 +155,7 @@ describe('BaseV1PluginFactory', () => {
 
     await expect(baseV1Factory.createPlugin(TEST_ADDRESSES[0], TEST_ADDRESSES[1], TEST_ADDRESSES[2])).to.be.revertedWith('Only Algebra factory');
     await expect(
-      baseV1Factory.beforeCreatePoolHook(
-        TEST_ADDRESSES[0],
-        wallet.address,
-        await baseV1Factory.getAddress(),
-        TEST_ADDRESSES[1],
-        TEST_ADDRESSES[2],
-        '0x'
-      )
+      baseV1Factory.beforeCreatePoolHook(TEST_ADDRESSES[0], wallet.address, await baseV1Factory.getAddress(), TEST_ADDRESSES[1], TEST_ADDRESSES[2])
     ).to.be.revertedWith('Only entry point');
     await expect(baseV1Factory.afterCreatePoolHook(TEST_ADDRESSES[0], TEST_ADDRESSES[1], await baseV1Factory.getAddress())).to.be.revertedWith(
       'Only entry point'
@@ -177,8 +193,8 @@ describe('BaseV1PluginFactory', () => {
   it('allows owner to manage created custom pool settings through entry point', async () => {
     const { baseV1Factory } = await loadFixture(fixture);
 
-    const poolAddress = await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
-    await baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
+    const poolAddress = await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
+    await baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
 
     const poolFactory = await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE);
     const pool = poolFactory.attach(poolAddress) as any as AlgebraPool;
@@ -197,7 +213,7 @@ describe('BaseV1PluginFactory', () => {
   describe('#gas snapshots [ @skip-on-coverage ]', () => {
     it('deployCustomPool', async () => {
       const { baseV1Factory } = await loadFixture(fixture);
-      await snapshotGasCost(baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x'));
+      await snapshotGasCost(baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1));
     });
 
     it('setPublicPoolCreationMode', async () => {

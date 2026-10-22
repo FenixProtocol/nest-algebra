@@ -352,7 +352,7 @@ describe('AlgebraFactoryUpgradeable', () => {
       expect(await factory.deployerByPool(futurePool)).to.eq(ZeroAddress);
 
       await factory.grantRole(await factory.CUSTOM_POOL_DEPLOYER(), customDeployer);
-      await defaultPluginFactory.createCustomPool(await factory.getAddress(), wallet.address, token1, token0, '0x');
+      await defaultPluginFactory.createCustomPool(await factory.getAddress(), wallet.address, token1, token0);
 
       expect(await defaultPluginFactory.isCustomPoolRegisteredBeforeHook()).to.be.true;
       expect(await defaultPluginFactory.customPoolCodeSizeBeforeHook()).to.eq(0);
@@ -380,8 +380,7 @@ describe('AlgebraFactoryUpgradeable', () => {
           await factory.getAddress(),
           wallet.address,
           TEST_ADDRESSES[1],
-          TEST_ADDRESSES[0],
-          '0x1234'
+          TEST_ADDRESSES[0]
         )
       ).to.eq(expectedPool);
 
@@ -390,8 +389,7 @@ describe('AlgebraFactoryUpgradeable', () => {
           await factory.getAddress(),
           wallet.address,
           TEST_ADDRESSES[1],
-          TEST_ADDRESSES[0],
-          '0x1234'
+          TEST_ADDRESSES[0]
         )
       )
         .to.emit(factory, 'CustomPool')
@@ -420,8 +418,7 @@ describe('AlgebraFactoryUpgradeable', () => {
         await factory.getAddress(),
         wallet.address,
         TEST_ADDRESSES[0],
-        TEST_ADDRESSES[1],
-        '0x'
+        TEST_ADDRESSES[1]
       );
 
       expect(await factory.poolByPair(token0, token1)).to.eq(classicPool);
@@ -439,8 +436,7 @@ describe('AlgebraFactoryUpgradeable', () => {
         await factory.getAddress(),
         wallet.address,
         TEST_ADDRESSES[0],
-        TEST_ADDRESSES[1],
-        '0x'
+        TEST_ADDRESSES[1]
       );
 
       await expect(
@@ -448,8 +444,7 @@ describe('AlgebraFactoryUpgradeable', () => {
           await factory.getAddress(),
           wallet.address,
           TEST_ADDRESSES[1],
-          TEST_ADDRESSES[0],
-          '0x'
+          TEST_ADDRESSES[0]
         )
       ).to.be.reverted;
     });

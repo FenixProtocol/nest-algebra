@@ -41,15 +41,14 @@ async function deployCustomPoolWithLiquidity(product: Product) {
 
   const token0Address = await token0.getAddress();
   const token1Address = await token1.getAddress();
-  const poolAddress = await nestFactory.deployCustomPool.staticCall(token0Address, token1Address, '0x');
-  await nestFactory.deployCustomPool(token0Address, token1Address, '0x');
+  const poolAddress = await nestFactory.deployCustomPool.staticCall(token0Address, token1Address, SQRT_PRICE_1);
+  await nestFactory.deployCustomPool(token0Address, token1Address, SQRT_PRICE_1);
   const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(poolAddress) as any as AlgebraPool;
   const plugin = await ethers.getContractAt(implementationName, await nestFactory.pluginByPool(poolAddress));
 
   const callee = (await (await ethers.getContractFactory(TEST_CALLEE_ABI, TEST_CALLEE_BYTECODE)).deploy()) as any as TestAlgebraCallee;
   await token0.approve(await callee.getAddress(), MaxUint256);
   await token1.approve(await callee.getAddress(), MaxUint256);
-  await pool.initialize(SQRT_PRICE_1);
   await callee.mint(poolAddress, (await ethers.getSigners())[0].address, -600, 600, 10n ** 18n);
   return { pool, plugin, callee, token0, token1 };
 }

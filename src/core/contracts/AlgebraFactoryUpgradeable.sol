@@ -162,13 +162,7 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
   }
 
   /// @inheritdoc IAlgebraFactory
-  function createCustomPool(
-    address customDeployer,
-    address creator,
-    address tokenA,
-    address tokenB,
-    bytes calldata data
-  ) external override returns (address customPool) {
+  function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB) external override returns (address customPool) {
     require(hasRole(CUSTOM_POOL_DEPLOYER, msg.sender), 'Can`t create custom pools');
     require(customDeployer != address(0));
     require(tokenA != tokenB);
@@ -180,7 +174,7 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
     customPoolByPair[customDeployer][token1][token0] = customPool;
     deployerByPool[customPool] = customDeployer;
 
-    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(customPool, creator, customDeployer, token0, token1, data);
+    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(customPool, creator, customDeployer, token0, token1);
 
     customPool = IAlgebraPoolDeployer(poolDeployer).deploy(plugin, token0, token1, customDeployer);
 

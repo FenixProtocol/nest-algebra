@@ -180,15 +180,8 @@ interface IAlgebraFactory {
   /// @param creator The initiator of custom pool creation
   /// @param tokenA One of the two tokens in the desired pool
   /// @param tokenB The other of the two tokens in the desired pool
-  /// @param data Additional data for plugin creation
   /// @return customPool The address of the newly created custom pool
-  function createCustomPool(
-    address customDeployer,
-    address creator,
-    address tokenA,
-    address tokenB,
-    bytes calldata data
-  ) external returns (address customPool);
+  function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB) external returns (address customPool);
 
   /// @dev updates pools creation mode
   /// @param mode_ the new mode for pools creation proccess

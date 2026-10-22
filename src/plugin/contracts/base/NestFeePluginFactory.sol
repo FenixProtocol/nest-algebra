@@ -6,6 +6,7 @@ import '@openzeppelin/contracts/access/Ownable2Step.sol';
 import '@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol';
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
+import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
 import '@cryptoalgebra/integral-periphery/contracts/interfaces/IAlgebraCustomPoolEntryPoint.sol';
 
 import '../interfaces/INestFeePluginFactory.sol';
@@ -26,7 +27,6 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     address token0;
     address token1;
     address plugin;
-    bytes32 dataHash;
   }
 
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
@@ -83,24 +83,19 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   }
 
   /// @inheritdoc INestFeePluginFactory
-  function deployCustomPool(address tokenA, address tokenB, bytes calldata data) external override returns (address customPool) {
+  function deployCustomPool(address tokenA, address tokenB, uint160 sqrtPriceX96) external override returns (address customPool) {
     if (!isPublicPoolCreationMode) _checkRole(CUSTOM_POOL_DEPLOYER);
 
     (address token0, address token1) = _sortTokens(tokenA, tokenB);
     address expectedPool = IAlgebraFactory(algebraFactory).computeCustomPoolAddress(address(this), token0, token1);
     require(_pendingCustomPoolByAddress[expectedPool].creator == address(0), 'Pool creation pending');
 
-    _pendingCustomPoolByAddress[expectedPool] = PendingCustomPool({
-      creator: msg.sender,
-      token0: token0,
-      token1: token1,
-      plugin: address(0),
-      dataHash: keccak256(data)
-    });
+    _pendingCustomPoolByAddress[expectedPool] = PendingCustomPool({creator: msg.sender, token0: token0, token1: token1, plugin: address(0)});
 
-    customPool = IAlgebraCustomPoolEntryPoint(algebraCustomPoolEntryPoint).createCustomPool(address(this), msg.sender, tokenA, tokenB, data);
+    customPool = IAlgebraCustomPoolEntryPoint(algebraCustomPoolEntryPoint).createCustomPool(address(this), msg.sender, tokenA, tokenB);
     require(customPool == expectedPool, 'Invalid custom pool');
     require(isCustomPool[customPool], 'Custom pool hook missing');
+    IAlgebraPool(customPool).initialize(sqrtPriceX96);
   }
 
   /// @inheritdoc IAlgebraPluginFactory
@@ -109,8 +104,7 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     address creator,
     address deployer,
     address token0,
-    address token1,
-    bytes calldata data
+    address token1
   ) external override returns (address plugin) {
     require(msg.sender == algebraCustomPoolEntryPoint, 'Only entry point');
     require(deployer == address(this), 'Invalid deployer');
@@ -118,8 +112,6 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     PendingCustomPool storage pendingPool = _pendingCustomPoolByAddress[pool];
     require(pendingPool.creator == creator, 'Invalid creator');
     require(pendingPool.token0 == token0 && pendingPool.token1 == token1, 'Invalid tokens');
-    require(pendingPool.dataHash == keccak256(data), 'Invalid data');
-
     plugin = _createPlugin(pool);
     pendingPool.plugin = plugin;
   }

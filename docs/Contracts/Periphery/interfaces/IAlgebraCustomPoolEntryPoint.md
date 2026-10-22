@@ -58,9 +58,9 @@ Returns whether a deployer can create custom pools
 ### createCustomPool
 
 ```solidity
-function createCustomPool(address deployer, address creator, address tokenA, address tokenB, bytes data) external returns (address customPool)
+function createCustomPool(address deployer, address creator, address tokenA, address tokenB) external returns (address customPool)
 ```
-**Selector**: `0xdbbf3db4`
+**Selector**: `0x13b6a2d2`
 
 Creates a custom pool
 
@@ -70,7 +70,6 @@ Creates a custom pool
 | creator | address | The initiator of custom pool creation |
 | tokenA | address | One of the two tokens in the desired pool |
 | tokenB | address | The other of the two tokens in the desired pool |
-| data | bytes | Additional data for plugin creation |
 
 **Returns:**
 

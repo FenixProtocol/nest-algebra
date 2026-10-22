@@ -17,16 +17,8 @@ interface IAlgebraPluginFactory {
   /// @param deployer The custom pool deployer, or address(0) for classic pools
   /// @param token0 First token of the pool
   /// @param token1 Second token of the pool
-  /// @param data Additional data for plugin creation
   /// @return New plugin address
-  function beforeCreatePoolHook(
-    address pool,
-    address creator,
-    address deployer,
-    address token0,
-    address token1,
-    bytes calldata data
-  ) external returns (address);
+  function beforeCreatePoolHook(address pool, address creator, address deployer, address token0, address token1) external returns (address);
 
   /// @notice Called after pool creation.
   /// @param plugin The plugin address

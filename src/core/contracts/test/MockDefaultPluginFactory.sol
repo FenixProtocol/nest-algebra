@@ -28,8 +28,7 @@ contract MockDefaultPluginFactory is IAlgebraPluginFactory {
     address,
     address customDeployer,
     address token0,
-    address token1,
-    bytes calldata
+    address token1
   ) external override returns (address plugin) {
     IAlgebraFactory factory = _factory();
     isCustomPoolRegisteredBeforeHook =
@@ -53,15 +52,9 @@ contract MockDefaultPluginFactory is IAlgebraPluginFactory {
     }
   }
 
-  function createCustomPool(
-    address entryPoint,
-    address creator,
-    address tokenA,
-    address tokenB,
-    bytes calldata data
-  ) external returns (address pool) {
+  function createCustomPool(address entryPoint, address creator, address tokenA, address tokenB) external returns (address pool) {
     (bool success, bytes memory result) = entryPoint.call(
-      abi.encodeWithSignature('createCustomPool(address,address,address,address,bytes)', address(this), creator, tokenA, tokenB, data)
+      abi.encodeWithSignature('createCustomPool(address,address,address,address)', address(this), creator, tokenA, tokenB)
     );
     require(success);
     pool = abi.decode(result, (address));

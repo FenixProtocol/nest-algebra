@@ -39,7 +39,7 @@ Updating `poolDeployer` changes deterministic addresses for pools created afterw
 Custom pool creation is exposed by the approved plugin factory:
 
 ```solidity
-address pool = pluginFactory.deployCustomPool(tokenA, tokenB, data);
+address pool = pluginFactory.deployCustomPool(tokenA, tokenB, sqrtPriceX96);
 ```
 
 Creation is private by default. The caller needs the plugin factory's `CUSTOM_POOL_DEPLOYER` role unless its owner enables public creation with:
@@ -63,11 +63,11 @@ caller
   -> entry point after-create hook
   -> plugin factory after-create validation
   -> factory registry updates
+  -> pool initialization at sqrtPriceX96
 ```
 
-The plugin factory records and validates pending creation data, including creator, sorted tokens, custom deployer, expected pool, plugin, and `data` hash. A failure in any hook or validation reverts the complete transaction.
-
-The `data` argument is forwarded through the hook flow and authenticated by the Nest factory. The current Nest factories do not interpret it.
+The plugin factory records and validates pending creation state, including creator, sorted tokens, custom deployer, expected pool, and plugin. It initializes
+the pool before returning. Invalid prices and failures in any hook or validation revert pool deployment, plugin deployment, registry writes, and pending state.
 
 ## Address calculation and lookup
 

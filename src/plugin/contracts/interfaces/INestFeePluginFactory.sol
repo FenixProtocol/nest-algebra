@@ -62,7 +62,7 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
   function isCustomPool(address pool) external view returns (bool);
 
   /// @notice Deploys a custom pool and its Nest fee plugin through the configured entry point.
-  function deployCustomPool(address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
+  function deployCustomPool(address tokenA, address tokenB, uint160 sqrtPriceX96) external returns (address customPool);
 
   /// @notice Create plugin for already existing pool
   /// @param deployer The address of the deployer of the pool, for classic pools use zero address, for custom pools - custom plugin deployer address

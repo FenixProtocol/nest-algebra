@@ -41,7 +41,7 @@ contract MockTimeDSFactory is IBasePluginV1Factory {
     return _createPlugin(pool);
   }
 
-  function beforeCreatePoolHook(address pool, address, address, address, address, bytes calldata) external override returns (address) {
+  function beforeCreatePoolHook(address pool, address, address, address, address) external override returns (address) {
     return _createPlugin(pool);
   }
 
