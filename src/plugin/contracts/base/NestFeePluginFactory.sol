@@ -74,11 +74,10 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   }
 
   /// @inheritdoc INestFeePluginFactory
-  function createPluginForExistingPool(address token0, address token1) external override returns (address) {
+  function createPluginForExistingPool(address deployer, address token0, address token1) external override returns (address) {
     IAlgebraFactory factory = IAlgebraFactory(algebraFactory);
     require(factory.hasRoleOrOwner(factory.POOLS_ADMINISTRATOR_ROLE(), msg.sender), 'Only pools administrator');
-
-    address pool = factory.poolByPair(token0, token1);
+    address pool = deployer == address(0) ? factory.poolByPair(token0, token1) : factory.customPoolByPair(deployer, token0, token1);
     require(pool != address(0), 'Pool not exist');
     return _createPlugin(pool);
   }

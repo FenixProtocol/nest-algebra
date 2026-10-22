@@ -65,10 +65,11 @@ interface INestFeePluginFactory is IAlgebraPluginFactory, IBeacon {
   function deployCustomPool(address tokenA, address tokenB, bytes calldata data) external returns (address customPool);
 
   /// @notice Create plugin for already existing pool
+  /// @param deployer The address of the deployer of the pool, for classic pools use zero address, for custom pools - custom plugin deployer address
   /// @param token0 The address of first token in pool
   /// @param token1 The address of second token in pool
   /// @return The address of created plugin
-  function createPluginForExistingPool(address token0, address token1) external returns (address);
+  function createPluginForExistingPool(address deployer, address token0, address token1) external returns (address);
 
   /// @notice Changes tick spacing for a custom pool created by this factory.
   function setTickSpacing(address pool, int24 newTickSpacing) external;

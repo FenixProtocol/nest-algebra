@@ -110,10 +110,10 @@ describe('BaseV1PluginFactory', () => {
     const poolAddress = await factory.createPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
     await factory.createPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
 
-    const pluginAddress = await baseV1Factory.createPluginForExistingPool.staticCall(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
-    await baseV1Factory.createPluginForExistingPool(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
+    const pluginAddress = await baseV1Factory.createPluginForExistingPool.staticCall(ZeroAddress, TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
+    await baseV1Factory.createPluginForExistingPool(ZeroAddress, TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
     expect(await baseV1Factory.pluginByPool(poolAddress)).to.eq(pluginAddress);
-    await expect(baseV1Factory.createPluginForExistingPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1])).to.be.revertedWith('Already created');
+    await expect(baseV1Factory.createPluginForExistingPool(ZeroAddress, TEST_ADDRESSES[0], TEST_ADDRESSES[1])).to.be.revertedWith('Already created');
   });
 
   it('allows public custom pool deployment without deployer role', async () => {
