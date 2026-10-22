@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 import { expect } from './shared/expect';
-import { nestPluginFixture } from './shared/nestFixtures';
+import { nestPluginFixture, SQRT_PRICE_1 } from './shared/nestFixtures';
 import { PLUGIN_FLAGS } from './shared/utilities';
 
 const BASE = 1_000;
@@ -84,6 +84,25 @@ describe('NestTWAPFeePlugin', () => {
     expect(await incentive.currentTick()).to.eq(7);
     await plugin.setIncentive(ethers.ZeroAddress);
     expect(await plugin.isIncentiveConnected(await incentive.getAddress())).to.be.false;
+  });
+
+  it('cannot attach an incentive before the plugin oracle is initialized', async () => {
+    const { mockFactory, pluginFactory } = await loadFixture(fixture);
+    const [farming] = await ethers.getSigners();
+    const pool = await (await ethers.getContractFactory('MockPool')).deploy();
+    await pool.initialize(SQRT_PRICE_1);
+    await mockFactory.createPlugin(await pluginFactory.getAddress(), await pool.getAddress());
+    const pluginAddress = await pluginFactory.pluginByPool(await pool.getAddress());
+    const plugin = await ethers.getContractAt('MockTimeNestTWAPFeePlugin', pluginAddress);
+    await pool.setPlugin(pluginAddress);
+    await pluginFactory.setFarmingAddress(farming.address);
+    const incentive = await (await ethers.getContractFactory('MockTimeVirtualPool')).deploy();
+
+    expect(await plugin.isInitialized()).to.be.false;
+    expect((await pool.globalState())[3]).to.eq(0);
+    await expect(plugin.setIncentive(await incentive.getAddress())).to.be.revertedWith('Not initialized');
+    expect(await plugin.incentive()).to.eq(ethers.ZeroAddress);
+    expect((await pool.globalState())[3]).to.eq(0);
   });
 
   it('rejects hook calls from addresses other than its pool', async () => {

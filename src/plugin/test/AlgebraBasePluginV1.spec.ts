@@ -522,6 +522,8 @@ describe('AlgebraBasePluginV1', () => {
         await mockPluginFactory.setFarmingAddress(wallet);
         const virtualPoolMockFactory = await ethers.getContractFactory('MockTimeVirtualPool');
         virtualPoolMock = (await virtualPoolMockFactory.deploy()) as any as MockTimeVirtualPool;
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
       });
 
       it('set incentive works', async () => {
@@ -604,30 +606,24 @@ describe('AlgebraBasePluginV1', () => {
       });
 
       it('incentive can not be attached if plugin is not attached', async () => {
+        await mockPool.setPlugin(ZeroAddress);
         await expect(plugin.setIncentive(virtualPoolMock)).to.be.revertedWith('Plugin not attached');
       });
 
-      it('incentive attached before initialization', async () => {
-        await mockPool.setPlugin(plugin);
+      it('cannot attach an incentive before the plugin oracle is initialized', async () => {
+        const { plugin: coldPlugin, mockPool: initializedPool, mockPluginFactory: coldPluginFactory } = await pluginFixture();
+        await coldPluginFactory.setFarmingAddress(wallet);
+        await initializedPool.initialize(encodePriceSqrt(1, 1));
+        await initializedPool.setPlugin(coldPlugin);
 
-        await plugin.setIncentive(virtualPoolMock);
-        await mockPool.initialize(encodePriceSqrt(1, 1));
-        await mockPool.mint(wallet.address, wallet.address, -120, 120, 1, '0x');
-        await mockPool.mint(wallet.address, wallet.address, minTick, maxTick, 1, '0x');
-
-        await mockPool.swapToTick(-130);
-
-        expect(await plugin.incentive()).to.be.eq(await virtualPoolMock.getAddress());
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.true;
-
-        const tick = (await mockPool.globalState()).tick;
-        expect(await virtualPoolMock.currentTick()).to.be.eq(tick);
-        expect(await virtualPoolMock.timestamp()).to.be.gt(0);
+        expect(await coldPlugin.isInitialized()).to.be.false;
+        expect((await initializedPool.globalState()).pluginConfig).to.eq(0);
+        await expect(coldPlugin.setIncentive(virtualPoolMock)).to.be.revertedWith('Not initialized');
+        expect(await coldPlugin.incentive()).to.eq(ZeroAddress);
+        expect((await initializedPool.globalState()).pluginConfig).to.eq(0);
       });
 
       it('incentive attached after initialization', async () => {
-        await mockPool.setPlugin(plugin);
-        await mockPool.initialize(encodePriceSqrt(1, 1));
         await plugin.setIncentive(virtualPoolMock);
 
         await mockPool.mint(wallet.address, wallet.address, -120, 120, 1, '0x');
@@ -685,6 +681,8 @@ describe('AlgebraBasePluginV1', () => {
         await mockPluginFactory.setFarmingAddress(wallet);
         const virtualPoolMockFactory = await ethers.getContractFactory('MockTimeVirtualPool');
         virtualPoolMock = (await virtualPoolMockFactory.deploy()) as any as MockTimeVirtualPool;
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
       });
 
       it('true with active incentive', async () => {

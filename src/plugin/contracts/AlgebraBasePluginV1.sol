@@ -186,6 +186,7 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
 
   /// @inheritdoc IFarmingPlugin
   function setIncentive(address newIncentive) external override {
+    require(isInitialized, 'Not initialized');
     bool toConnect = newIncentive != address(0);
     bool accessAllowed;
     if (toConnect) {
