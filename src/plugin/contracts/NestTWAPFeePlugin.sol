@@ -426,7 +426,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   }
 
   /// @dev Recalculated on EVERY swap, including repeated swaps within one block: the tick moved by a
-  /// previous swap in the same block immediately raises the fee for the next one (anti-sandwich)
+  /// previous swap in the same block immediately changes the fee based on delta between current and TWAP ticks for the next one (anti-sandwich)
   function _updateDeviationFee(int24 tick, uint16 fee) internal virtual {
     uint16 newFee = _getDeviationFee(tick);
     if (newFee != fee) {
