@@ -190,6 +190,14 @@ describe('BaseV1PluginFactory', () => {
     await expect(baseV1Factory.connect(other).upgradeTo(newPluginImplementation)).to.be.revertedWith('Only administrator');
   });
 
+  it('does not support the deviation fee configuration', async () => {
+    const { baseV1Factory } = await loadFixture(fixture);
+
+    await expect(baseV1Factory.setDefaultDeviationFeeConfiguration(500, 10_000, 0, 600)).to.be.revertedWith(
+      'Deviation fee is not supported in V1'
+    );
+  });
+
   it('allows owner to manage created custom pool settings through entry point', async () => {
     const { baseV1Factory } = await loadFixture(fixture);
 

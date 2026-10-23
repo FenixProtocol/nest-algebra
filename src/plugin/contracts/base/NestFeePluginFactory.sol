@@ -170,7 +170,7 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
     uint16 feeCap,
     uint64 scalingFactor,
     uint32 twapWindow
-  ) external override onlyAdministrator {
+  ) external virtual override onlyAdministrator {
     require(scalingFactor == 0, 'Default must be inert');
     require(baseFee <= 30_000, 'Base fee too high');
     require(feeCap >= baseFee && feeCap <= 50_000, 'Invalid fee cap');
