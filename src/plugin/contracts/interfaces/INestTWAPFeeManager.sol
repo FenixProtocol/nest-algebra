@@ -29,6 +29,11 @@ interface INestTWAPFeeManager is IAlgebraDynamicFeePlugin {
   function getTwapTick() external view returns (int24 twapTick, bool available);
 
   /// @notice True when stored timepoint history covers `window` seconds.
+  /// can return false if:
+  /// - the pool has been idle for a long time
+  /// - the plugin wasn't initialized
+  /// - the pool.plugin isn't equal current plugin
+  /// - the pluginFactory.pluginByPool(pool) isn't equal current plugin
   function isTwapReady(uint32 window) external view returns (bool);
 
   /// @notice Changes the deviation fee configuration for the pool
