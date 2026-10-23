@@ -210,6 +210,18 @@ describe('BaseV1PluginFactory', () => {
     await expect(baseV1Factory.setFee(TEST_ADDRESSES[2], 500)).to.be.revertedWith('Unknown custom pool');
   });
 
+  it('reverts when owner sets a static fee above 5%', async () => {
+    const { baseV1Factory } = await loadFixture(fixture);
+
+    const poolAddress = await baseV1Factory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
+    await baseV1Factory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
+
+    await baseV1Factory.setPluginConfig(poolAddress, 0);
+    await expect(baseV1Factory.setFee(poolAddress, 50_000)).to.not.be.reverted;
+    await expect(baseV1Factory.setFee(poolAddress, 50_001)).to.be.revertedWith('Fee too high');
+    await expect(baseV1Factory.setFee(poolAddress, 65_535)).to.be.revertedWith('Fee too high');
+  });
+
   describe('#gas snapshots [ @skip-on-coverage ]', () => {
     it('deployCustomPool', async () => {
       const { baseV1Factory } = await loadFixture(fixture);

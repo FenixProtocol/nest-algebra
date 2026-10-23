@@ -31,6 +31,7 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
 
   bytes32 public constant override ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR = keccak256('ALGEBRA_BASE_PLUGIN_FACTORY_ADMINISTRATOR');
   bytes32 public constant override CUSTOM_POOL_DEPLOYER = keccak256('CUSTOM_POOL_DEPLOYER');
+  uint16 public constant MAX_FEE_CAP = 50_000; // 5%
 
   uint16 internal constant DEFAULT_BASE_FEE = 0.05e4;
   uint16 internal constant DEFAULT_FEE_CAP = 1e4;
@@ -150,6 +151,7 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
 
   /// @inheritdoc INestFeePluginFactory
   function setFee(address pool, uint16 newFee) external override onlyOwner {
+    require(newFee <= MAX_FEE_CAP, 'Fee too high');
     _checkCustomPool(pool);
     IAlgebraCustomPoolEntryPoint(algebraCustomPoolEntryPoint).setFee(pool, newFee);
   }
