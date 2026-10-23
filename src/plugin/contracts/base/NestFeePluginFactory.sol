@@ -140,6 +140,7 @@ abstract contract NestFeePluginFactory is INestFeePluginFactory, AccessControlEn
   /// @inheritdoc INestFeePluginFactory
   function setPlugin(address pool, address newPluginAddress) external override onlyOwner {
     _checkCustomPool(pool);
+    pluginByPool[pool] = newPluginAddress;
     IAlgebraCustomPoolEntryPoint(algebraCustomPoolEntryPoint).setPlugin(pool, newPluginAddress);
   }
 

@@ -189,6 +189,7 @@ for (const [product, fixture] of [
       expect(await pool.tickSpacing()).to.eq(100);
       await nestFactory.setPlugin(poolAddress, ZeroAddress);
       expect(await pool.plugin()).to.eq(ZeroAddress);
+      expect(await nestFactory.pluginByPool(poolAddress)).to.eq(ZeroAddress);
       await expect(nestFactory.connect(other).setPlugin(poolAddress, ZeroAddress)).to.be.revertedWith('Ownable: caller is not the owner');
       await expect(nestFactory.setFee(await factory.getAddress(), 500)).to.be.revertedWith('Unknown custom pool');
     });

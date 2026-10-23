@@ -143,6 +143,14 @@ describe('AlgebraBasePluginV1', () => {
       await mockPool.setPlugin(plugin);
     });
 
+    it('does not expose timepoints before initialization', async () => {
+      await expect(plugin.getTimepoints([0])).to.be.revertedWith('Not initialized or not attached');
+    });
+
+    it('does not expose a single timepoint before initialization', async () => {
+      await expect(plugin.getSingleTimepoint(0)).to.be.revertedWith('Not initialized or not attached');
+    });
+
     it('initializes timepoints slot', async () => {
       await initializeAtZeroTick(mockPool);
       checkTimepointEquals(await plugin.timepoints(0), {
@@ -154,6 +162,12 @@ describe('AlgebraBasePluginV1', () => {
 
     describe('#getTimepoints', () => {
       beforeEach(async () => await initializeAtZeroTick(mockPool));
+
+      it('does not expose timepoints after detachment', async () => {
+        await mockPool.setPlugin(ZeroAddress);
+
+        await expect(plugin.getTimepoints([0])).to.be.revertedWith('Not initialized or not attached');
+      });
 
       // zero tick
       it('current tick accumulator increases by tick over time', async () => {
@@ -232,6 +246,12 @@ describe('AlgebraBasePluginV1', () => {
 
     describe('#getSingleTimepoint', () => {
       beforeEach(async () => await initializeAtZeroTick(mockPool));
+
+      it('does not expose a timepoint after detachment', async () => {
+        await mockPool.setPlugin(ZeroAddress);
+
+        await expect(plugin.getSingleTimepoint(0)).to.be.revertedWith('Not initialized or not attached');
+      });
 
       // zero tick
       it('current tick accumulator increases by tick over time', async () => {

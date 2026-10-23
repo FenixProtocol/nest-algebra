@@ -206,6 +206,10 @@ describe('BaseV1PluginFactory', () => {
     const globalState = await pool.globalState();
     expect(globalState[2]).to.eq(500);
 
+    await baseV1Factory.setPlugin(poolAddress, ZeroAddress);
+    expect(await pool.plugin()).to.eq(ZeroAddress);
+    expect(await baseV1Factory.pluginByPool(poolAddress)).to.eq(ZeroAddress);
+
     await expect(baseV1Factory.connect(other).setFee(poolAddress, 501)).to.be.revertedWith('Ownable: caller is not the owner');
     await expect(baseV1Factory.setFee(TEST_ADDRESSES[2], 500)).to.be.revertedWith('Unknown custom pool');
   });
