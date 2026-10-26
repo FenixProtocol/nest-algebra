@@ -13,6 +13,16 @@ const WINDOW = 600;
 const fixture = () => nestPluginFixture('TWAP');
 
 describe('NestTWAPFeePlugin', () => {
+  it('prepays through the final ring-buffer slot and rejects ranges past it', async () => {
+    const { plugin } = await loadFixture(fixture);
+    const finalIndex = 2n ** 16n - 1n;
+
+    await plugin.prepayTimepointsStorageSlots(finalIndex - 1n, 2);
+    expect((await plugin.timepoints(finalIndex - 1n)).blockTimestamp).to.eq(1);
+    expect((await plugin.timepoints(finalIndex)).blockTimestamp).to.eq(1);
+    await expect(plugin.prepayTimepointsStorageSlots(finalIndex - 1n, 3)).to.be.revertedWithoutReason;
+  });
+
   it('initializes its recorder and applies a linear, capped, decaying TWAP fee', async () => {
     const { pool, plugin } = await loadFixture(fixture);
     expect(await plugin.isInitialized()).to.be.true;

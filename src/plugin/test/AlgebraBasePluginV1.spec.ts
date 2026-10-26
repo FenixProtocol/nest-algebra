@@ -295,6 +295,14 @@ describe('AlgebraBasePluginV1', () => {
         await plugin.prepayTimepointsStorageSlots(10, 50);
       });
 
+      it('can prepay through the final ring-buffer slot', async () => {
+        const finalIndex = 2n ** 16n - 1n;
+        await plugin.prepayTimepointsStorageSlots(finalIndex - 1n, 2);
+
+        expect((await plugin.timepoints(finalIndex - 1n)).blockTimestamp).to.eq(1);
+        expect((await plugin.timepoints(finalIndex)).blockTimestamp).to.eq(1);
+      });
+
       it('writes after swap, prepaid after init', async () => {
         await initializeAtZeroTick(mockPool);
         await plugin.prepayTimepointsStorageSlots(1, 1);
@@ -338,9 +346,8 @@ describe('AlgebraBasePluginV1', () => {
         });
 
         it('cannot overflow index', async () => {
-          await plugin.prepayTimepointsStorageSlots(0, 10);
-          expect(plugin.prepayTimepointsStorageSlots(11, 2n ** 16n - 5n)).to.be.revertedWithoutReason;
-          expect(plugin.prepayTimepointsStorageSlots(11, 2n ** 16n)).to.be.revertedWithoutReason;
+          const finalIndex = 2n ** 16n - 1n;
+          await expect(plugin.prepayTimepointsStorageSlots(finalIndex - 1n, 3)).to.be.revertedWithoutReason;
         });
       });
     });

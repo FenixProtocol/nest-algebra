@@ -64,6 +64,6 @@ interface IVolatilityOracle {
   /// @notice Fills uninitialized timepoints with nonzero value
   /// @dev Can be used to reduce the gas cost of future swaps
   /// @param startIndex The start index, must be not initialized
-  /// @param amount of slots to fill, startIndex + amount must be <= type(uint16).max
+  /// @param amount of slots to fill, startIndex + amount must be <= 65536
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external;
 }

@@ -139,10 +139,11 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
   /// @inheritdoc IVolatilityOracle
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
     require(!timepoints[startIndex].initialized); // if not initialized, then all subsequent ones too
-    require(amount > 0 && type(uint16).max - startIndex >= amount);
+    uint256 endIndex = uint256(startIndex) + amount;
+    require(amount > 0 && endIndex <= UINT16_MODULO);
 
     unchecked {
-      for (uint256 i = startIndex; i < startIndex + amount; ++i) {
+      for (uint256 i = startIndex; i < endIndex; ++i) {
         timepoints[i].blockTimestamp = 1; // will be overwritten
       }
     }

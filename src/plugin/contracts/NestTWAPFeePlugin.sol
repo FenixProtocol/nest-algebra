@@ -45,7 +45,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   uint16 public constant MAX_BASE_FEE = 30_000; // 3%
   uint16 public constant MAX_FEE_CAP = 50_000; // 5%
   uint32 public constant MIN_TWAP_WINDOW = 60; // 1 minute
-  // Bounded to ~12h: the timepoint ring buffer (65535 slots, written <=1/sec) cannot guarantee a full
+  // Bounded to ~12h: the timepoint ring buffer (65536 slots, written <=1/sec) cannot guarantee a full
   // day of history on a busy pool, so a >12h window could silently disable the dynamic fee.
   uint32 public constant MAX_TWAP_WINDOW = 12 hours;
 
@@ -174,10 +174,11 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   /// @inheritdoc IVolatilityOracle
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
     require(!timepoints[startIndex].initialized); // if not initialized, then all subsequent ones too
-    require(amount > 0 && type(uint16).max - startIndex >= amount);
+    uint256 endIndex = uint256(startIndex) + amount;
+    require(amount > 0 && endIndex <= UINT16_MODULO);
 
     unchecked {
-      for (uint256 i = startIndex; i < startIndex + amount; ++i) {
+      for (uint256 i = startIndex; i < endIndex; ++i) {
         timepoints[i].blockTimestamp = 1; // will be overwritten
       }
     }

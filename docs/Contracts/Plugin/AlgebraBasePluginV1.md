@@ -218,7 +218,7 @@ Fills uninitialized timepoints with nonzero value
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | startIndex | uint16 | The start index, must be not initialized |
-| amount | uint16 | of slots to fill, startIndex + amount must be <= type(uint16).max |
+| amount | uint16 | of slots to fill, startIndex + amount must be <= 65536 |
 
 ### changeFeeConfiguration
 
