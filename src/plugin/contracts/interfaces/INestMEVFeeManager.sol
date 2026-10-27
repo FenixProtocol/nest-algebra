@@ -37,7 +37,8 @@ interface INestMEVFeeManager {
   /// (klvr > 0) it performs an activation-time gap check: the live |poolTick - oracleTick| must be
   /// <= maxConfigGap. This rejects structurally valid observations that are outside the configured arming
   /// bound; it does not independently establish that an in-bound feed is economically correct. Enforces
-  /// klvr <= MAX_KLVR (slope <= 1.0).
+  /// klvr <= MAX_KLVR (slope <= 0.94), and the configured deadband must preserve an arbitrage
+  /// edge both when the LVR term starts and when the total fee reaches its cap.
   function setOracleConfig(
     uint64 klvr,
     uint32 deadband,

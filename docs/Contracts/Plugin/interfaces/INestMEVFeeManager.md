@@ -91,7 +91,8 @@ Enable, retune, or disable (klvr&#x3D;0) the Nest MEV oracle term.
 (klvr &gt; 0) it performs an activation-time gap check: the live |poolTick - oracleTick| must be
 &lt;&#x3D; maxConfigGap. This rejects structurally valid observations that are outside the configured arming
 bound; it does not independently establish that an in-bound feed is economically correct. Enforces
-klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 1.0).*
+klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 0.94), and the configured deadband must preserve an arbitrage
+edge both when the LVR term starts and when the total fee reaches its cap.*
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |

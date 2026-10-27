@@ -5,6 +5,7 @@ The contract API reference under `Contracts/` is generated from Solidity NatSpec
 ## Guides
 
 - [Custom pools and custom pool deployers](Custom_Pools.md)
+- [Nest MEV fee integration](Nest_MEV_Fee_Integration.md)
 - [Developer migration and ABI notes](../FOR_DEVELOPERS.md)
 - [Create a gauge for a V3 pool](Create_Gauge_For_V3_Pool.md)
 - [Set up a new pool manually](Setup_New_Pool_Manual.md)
