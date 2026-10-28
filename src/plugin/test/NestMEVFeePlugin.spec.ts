@@ -3,7 +3,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 import { expect } from './shared/expect';
 import { installSpotOracle, nestPluginFixture } from './shared/nestFixtures';
-import { encodePriceSqrt } from './shared/utilities';
+import { encodePriceSqrt, MAX_TICK } from './shared/utilities';
 
 const BASE = 1_000;
 const CAP = 10_000;
@@ -61,6 +61,20 @@ async function alignOracleWithPool(pool: any, oracle: any) {
 }
 
 describe('NestMEVFeePlugin', () => {
+  it('uses the liquid edge for the live gap and block-start tick after an empty-range park', async () => {
+    const { pool, plugin } = await loadFixture(fixture);
+    await arm(plugin, { slope: MIN_SANDWICH_SLOPE, klvr: 1_000_000, deadband: 100 });
+
+    await pool.swapToTickInDirection(800_000, false);
+    await pool.setLiquidityAndTicks(0, 600, MAX_TICK);
+    await plugin.advanceTime(7);
+    await pool.swapToTickInDirection(599, true);
+
+    expect((await plugin.blockStartState())[1]).to.eq(599);
+    expect((await pool.globalState()).fee).to.be.lt(CAP);
+    expect(await plugin.getCurrentFee()).to.be.lt(CAP);
+  });
+
   for (const { label, initialPrice, priceExp, inverted, expectedOracleTick } of [
     {
       label: 'token0 6 decimals and token1 18 decimals',

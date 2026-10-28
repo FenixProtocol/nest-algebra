@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { setCode } from '@nomicfoundation/hardhat-network-helpers';
 
 import { MockFactory, MockPool } from '../../typechain';
+import { MAX_TICK, MIN_TICK } from './utilities';
 
 export const SPOT_PRECOMPILE = '0x0000000000000000000000000000000000000808';
 export const SQRT_PRICE_1 = 79228162514264337593543950336n;
@@ -26,6 +27,7 @@ export async function nestPluginFixture(product: NestProduct, warm = true, initi
   await plugin.advanceTime(TEST_START_TIME);
   await pool.setPlugin(pluginAddress);
   await pool.initialize(initialPrice);
+  await pool.setLiquidityAndTicks(1, MIN_TICK, MAX_TICK);
   if (warm) {
     await plugin.advanceTime(700);
     await pool.swapToTick((await pool.globalState()).tick);

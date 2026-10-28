@@ -125,6 +125,29 @@ for (const [product, fixture] of [
   });
 }
 
+describe('Nest zero-liquidity tick protection', () => {
+  it('records the liquid range edge after a real pool is parked near the maximum tick', async () => {
+    const { pool, plugin, callee } = await loadFixture(twapFixture);
+    const [trader] = await ethers.getSigners();
+    const poolAddress = await pool.getAddress();
+
+    await time.increase(700);
+    await plugin.setDeviationFeeConfig(BASE, CAP, 1_000_000, LONG_TWAP);
+
+    await callee.swapExact1For0(poolAddress, 10n ** 20n, trader.address, MAX_SQRT_RATIO - 1n);
+    expect(await pool.liquidity()).to.eq(0);
+    expect((await pool.globalState())[1]).to.be.gt(600);
+
+    await time.increase(7);
+    await callee.swapExact0For1(poolAddress, 1n, trader.address, MIN_SQRT_RATIO + 1n);
+
+    const latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(599);
+    expect((await pool.globalState())[2]).to.be.lt(CAP);
+    expect((await plugin.getTwapTick())[0]).to.be.lt(20);
+  });
+});
+
 describe('Nest MEV configurable-slope integration', () => {
   it('leaves a profitable arbitrage at the first oracle gap charged the 5% fee cap', async () => {
     const { pool, plugin, callee, token0, token1, oracle, oracleHarness } = await loadFixture(lvrCapArbitrageFixture);

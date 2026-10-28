@@ -83,8 +83,15 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   /// @inheritdoc IAlgebraPoolState
-  function safelyGetStateOfAMM() external pure override returns (uint160, int24, uint16, uint8, uint128, int24, int24) {
-    revert('not implemented');
+  function safelyGetStateOfAMM()
+    external
+    view
+    override
+    returns (uint160 price, int24 tick, uint16 fee_, uint8 pluginConfig, uint128 activeLiquidity, int24 nextTick, int24 previousTick)
+  {
+    GlobalState memory state = globalState;
+    if (!state.unlocked) revert IAlgebraPoolErrors.locked();
+    return (state.price, state.tick, state.fee, state.pluginConfig, liquidity, nextTickGlobal, prevTickGlobal);
   }
 
   constructor() {
@@ -165,17 +172,32 @@ contract MockPool is IAlgebraPoolActions, IAlgebraPoolPermissionedActions, IAlge
   }
 
   function swapToTick(int24 targetTick) external {
+    _swapToTick(targetTick, true);
+  }
+
+  function swapToTickInDirection(int24 targetTick, bool zeroToOne) external {
+    _swapToTick(targetTick, zeroToOne);
+  }
+
+  function _swapToTick(int24 targetTick, bool zeroToOne) private {
     IAlgebraPlugin _plugin = IAlgebraPlugin(plugin);
     if (globalState.pluginConfig & Plugins.BEFORE_SWAP_FLAG != 0) {
-      _plugin.beforeSwap(msg.sender, msg.sender, true, 0, 0, false, '');
+      _plugin.beforeSwap(msg.sender, msg.sender, zeroToOne, 0, 0, false, '');
     }
 
     globalState.price = TickMath.getSqrtRatioAtTick(targetTick);
     globalState.tick = targetTick;
 
     if (globalState.pluginConfig & Plugins.AFTER_SWAP_FLAG != 0) {
-      _plugin.afterSwap(msg.sender, msg.sender, true, 0, 0, 0, 0, '');
+      _plugin.afterSwap(msg.sender, msg.sender, zeroToOne, 0, 0, 0, 0, '');
     }
+  }
+
+  function setLiquidityAndTicks(uint128 activeLiquidity, int24 previousTick, int24 nextTick) external {
+    require(msg.sender == owner);
+    liquidity = activeLiquidity;
+    prevTickGlobal = previousTick;
+    nextTickGlobal = nextTick;
   }
 
   /// @inheritdoc IAlgebraPoolActions

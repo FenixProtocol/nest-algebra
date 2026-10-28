@@ -87,7 +87,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
       require(isTwapReady(shortTwapWindow), 'Short TWAP not ready');
       _validateLvrEdge(klvr, deadband, _baseFee, _feeCap);
 
-      (uint160 price, int24 tick, , ) = _getPoolState();
+      (uint160 price, int24 tick, , ) = _getProtectedPoolState();
       require(price != 0, 'Pool not initialized');
       (int24 oracleTick, bool ok) = HyperCoreSpotOracle.getOracleTick(spotIndex, priceExp, inverted);
       require(ok, 'Oracle read failed');

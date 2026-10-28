@@ -3,7 +3,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 import { expect } from './shared/expect';
 import { nestPluginFixture, SQRT_PRICE_1 } from './shared/nestFixtures';
-import { PLUGIN_FLAGS } from './shared/utilities';
+import { MAX_TICK, MIN_TICK, PLUGIN_FLAGS } from './shared/utilities';
 
 const BASE = 1_000;
 const CAP = 10_000;
@@ -49,6 +49,68 @@ describe('NestTWAPFeePlugin', () => {
     await pool.swapToTick(10_000);
     await pool.swapToTick(10_000);
     expect(await plugin.getCurrentFee()).to.eq(BASE);
+  });
+
+  it('uses the first liquid tick in each swap direction when active liquidity is zero', async () => {
+    const { pool, plugin } = await loadFixture(fixture);
+    await pool.setLiquidityAndTicks(0, -600, 600);
+
+    await plugin.advanceTime(1);
+    await pool.swapToTickInDirection(100, false);
+    let latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(600);
+
+    await plugin.advanceTime(1);
+    await pool.swapToTickInDirection(-100, true);
+    latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(-601);
+  });
+
+  it('uses the opposite range edge when a zero-liquidity swap points away from all liquidity', async () => {
+    const { pool, plugin } = await loadFixture(fixture);
+    await pool.setLiquidityAndTicks(0, 600, MAX_TICK);
+
+    await plugin.advanceTime(1);
+    await pool.swapToTickInDirection(800_000, false);
+
+    const latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(599);
+  });
+
+  it('does not record or quote a freely parked tick when no liquidity ranges exist', async () => {
+    const { pool, plugin } = await loadFixture(fixture);
+    await plugin.setDeviationFeeConfig(BASE, CAP, SLOPE, WINDOW);
+    await pool.setLiquidityAndTicks(0, MIN_TICK, MAX_TICK);
+
+    await plugin.advanceTime(7);
+    await pool.swapToTickInDirection(800_000, false);
+    let latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(0);
+
+    await plugin.advanceTime(7);
+    expect(await plugin.getCurrentFee()).to.eq(BASE);
+    expect((await plugin.getTwapTick())[0]).to.eq(0);
+    expect((await plugin.getSingleTimepoint(0))[0]).to.eq(0);
+
+    await pool.swapToTickInDirection(850_000, false);
+    latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(0);
+    expect((await pool.globalState()).fee).to.eq(BASE);
+  });
+
+  it('records the liquid edge instead of an extreme parked tick when liquidity is re-entered', async () => {
+    const { pool, plugin } = await loadFixture(fixture);
+    await plugin.setDeviationFeeConfig(BASE, CAP, 1_000_000, WINDOW);
+
+    await pool.swapToTickInDirection(800_000, false);
+    await pool.setLiquidityAndTicks(0, 600, MAX_TICK);
+    await plugin.advanceTime(7);
+    await pool.swapToTickInDirection(599, true);
+
+    const latest = await plugin.timepointIndex();
+    expect((await plugin.timepoints(latest)).tick).to.eq(599);
+    expect((await pool.globalState()).fee).to.be.lt(CAP);
+    expect((await plugin.getTwapTick())[0]).to.be.lt(20);
   });
 
   it('enforces fee-manager authorization, bounds, and TWAP readiness', async () => {
