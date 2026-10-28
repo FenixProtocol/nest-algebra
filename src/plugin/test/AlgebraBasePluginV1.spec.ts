@@ -354,6 +354,22 @@ describe('AlgebraBasePluginV1', () => {
   });
 
   describe('#DynamicFeeManager', () => {
+    describe('#getCurrentFee', () => {
+      it('reverts before the plugin oracle is initialized', async () => {
+        await mockPool.setPlugin(plugin);
+
+        await expect(plugin.getCurrentFee()).to.be.revertedWith('Not initialized or not attached');
+      });
+
+      it('reverts after the plugin is detached from the pool', async () => {
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
+        await mockPool.setPlugin(other.address);
+
+        await expect(plugin.getCurrentFee()).to.be.revertedWith('Not initialized or not attached');
+      });
+    });
+
     describe('#adaptiveFee', function () {
       this.timeout(0);
       const liquidity = expandTo18Decimals(1000);

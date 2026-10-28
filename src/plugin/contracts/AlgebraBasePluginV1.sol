@@ -162,6 +162,7 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
 
   /// @inheritdoc IAlgebraDynamicFeePlugin
   function getCurrentFee() external view override returns (uint16 fee) {
+    require(isInitialized && _getPluginInPool() == address(this), 'Not initialized or not attached');
     uint16 lastIndex = timepointIndex;
     AlgebraFeeConfigurationU144 feeConfig_ = _feeConfig;
     if (feeConfig_.alpha1() | feeConfig_.alpha2() == 0) return feeConfig_.baseFee();
