@@ -7,9 +7,10 @@ This document is the development team's issue-by-issue response to the **Bailsec
 - Audit source: [local report](<audits/Bailsec - Nest - Algebra Plugin - 2nd Audit Report.pdf>)
 - Audit report SHA-256: `11de1e7e6fb524dfbd895efe45b379362802ab226a76fb910c1011720e015175`
 - Audited commit: [`3139ba1c75e24028dda2a9d0e2602cdf0025bbc2`](https://github.com/FenixProtocol/nest-algebra/tree/3139ba1c75e24028dda2a9d0e2602cdf0025bbc2)
-- Resolution branch: [`audit/nest-880-nest-algebra`](https://github.com/FenixProtocol/nest-algebra/tree/audit/nest-880-nest-algebra)
+- Resolution commit: [`11f969070c50973c2a790b3fdf11d41b6fe630e9`](https://github.com/FenixProtocol/nest-algebra/commit/11f969070c50973c2a790b3fdf11d41b6fe630e9)
+- Full resolution comparison: [`3139ba1c…11f9690`](https://github.com/FenixProtocol/nest-algebra/compare/3139ba1c75e24028dda2a9d0e2602cdf0025bbc2...11f969070c50973c2a790b3fdf11d41b6fe630e9)
 
-The resolution branch contains the implementation, documentation, and counter-PoC changes described below. Each response records the affected behavior, caller and preconditions, implemented resolution, and supporting test evidence.
+The resolution commit contains the implementation, documentation, and counter-PoC changes described below. Each response records the affected behavior, caller and preconditions, implemented resolution, and supporting test evidence.
 
 This is a development-team response, not confirmation from Bailsec that a finding is resolved.
 
@@ -63,6 +64,7 @@ This fix deliberately moves authorization from `onlyOwner` to the proxy-admin-co
 - **Severity:** Medium
 - **Resolution:** Implemented
 - **Fix commit:** [`fd55cee9cc3567ab8acd06d0e326209ed6ca9354`](https://github.com/FenixProtocol/nest-algebra/commit/fd55cee9cc3567ab8acd06d0e326209ed6ca9354)
+- **Counter-PoC commit:** [`11f969070c50973c2a790b3fdf11d41b6fe630e9`](https://github.com/FenixProtocol/nest-algebra/commit/11f969070c50973c2a790b3fdf11d41b6fe630e9)
 
 **Issue summary.** The position manager shared a reentrancy lock across minting, liquidity increases, and payment helpers, but `decreaseLiquidity`, `collect`, and `burn` were outside the lock. A malicious pool token could reenter a public payment helper while `collect` temporarily held user assets. A malicious plugin could also reenter `decreaseLiquidity` during `increaseLiquidity`, causing the outer call to overwrite cached position accounting.
 
@@ -72,12 +74,12 @@ This fix deliberately moves authorization from `onlyOwner` to the proxy-admin-co
 
 **Resolution and behavior change.** `nonReentrant` was added to `decreaseLiquidity`, `collect`, and `burn`, placing every mutating position operation and payment helper under the same manager lock. Ordinary sequential multicall operations remain valid because the lock is released between delegatecalled multicall elements.
 
-**Counter-PoCs.** [`ReentrancyProtection.spec.ts`](src/periphery/test/ReentrancyProtection.spec.ts) contains both reported attack traces:
+**Counter-PoCs.** [`ReentrancyProtection.spec.ts`](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/periphery/test/ReentrancyProtection.spec.ts) contains both reported attack traces:
 
-1. **[Malicious-token `collect` callback](src/periphery/test/ReentrancyProtection.spec.ts#L405-L486).** The test creates two positions and collects both to the position manager in one multicall. The malicious token callback fires during the second `collect` and attempts `sweepToken` to the thief while the manager holds assets from the first collection. The nested settlement call fails with `ReentrancyGuard: reentrant call`, the thief receives no tokens, and the intended final sweep transfers the exact owed balance to the legitimate recipient.
-2. **[Malicious-plugin position-hook callback](src/periphery/test/ReentrancyProtection.spec.ts#L488-L551).** The test grants a malicious plugin approval for the NFT, enables its `beforeModifyPosition` hook, and has that hook call `decreaseLiquidity` while `increaseLiquidity` is active. The nested call fails with the shared reentrancy guard; the outer increase succeeds, the NFT liquidity doubles as expected, and the manager's recorded liquidity equals the pool position liquidity with no unexpected owed balances.
+1. **[Malicious-token `collect` callback](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/periphery/test/ReentrancyProtection.spec.ts#L405-L486).** The test creates two positions and collects both to the position manager in one multicall. The malicious token callback fires during the second `collect` and attempts `sweepToken` to the thief while the manager holds assets from the first collection. The nested settlement call fails with `ReentrancyGuard: reentrant call`, the thief receives no tokens, and the intended final sweep transfers the exact owed balance to the legitimate recipient.
+2. **[Malicious-plugin position-hook callback](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/periphery/test/ReentrancyProtection.spec.ts#L488-L551).** The test grants a malicious plugin approval for the NFT, enables its `beforeModifyPosition` hook, and has that hook call `decreaseLiquidity` while `increaseLiquidity` is active. The nested call fails with the shared reentrancy guard; the outer increase succeeds, the NFT liquidity doubles as expected, and the manager's recorded liquidity equals the pool position liquidity with no unexpected owed balances.
 
-The tests use dedicated attacker doubles in [`ReentrantCollectToken.sol`](src/periphery/contracts/test/ReentrantCollectToken.sol) and [`ReentrantPositionPlugin.sol`](src/periphery/contracts/test/ReentrantPositionPlugin.sol). They pass with `npx hardhat test test/ReentrancyProtection.spec.ts` from `src/periphery`.
+The tests use dedicated attacker doubles in [`ReentrantCollectToken.sol`](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/periphery/contracts/test/ReentrantCollectToken.sol) and [`ReentrantPositionPlugin.sol`](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/periphery/contracts/test/ReentrantPositionPlugin.sol). They pass with `npx hardhat test test/ReentrancyProtection.spec.ts` from `src/periphery`.
 
 ### Issue_12 — `mint` accepts tokens in the wrong order
 
@@ -195,7 +197,7 @@ The cap applies to the Nest factory owner wrapper. A holder of the Algebra facto
 
 - **Severity:** Low
 - **Resolution:** Implemented
-- **Fix references:** [`8194fe9a7f9b4cb7afff0ac13d9f34870f683750`](https://github.com/FenixProtocol/nest-algebra/commit/8194fe9a7f9b4cb7afff0ac13d9f34870f683750) and the [resolution branch update](https://github.com/FenixProtocol/nest-algebra/tree/audit/nest-880-nest-algebra)
+- **Fix commits:** [`8194fe9a7f9b4cb7afff0ac13d9f34870f683750`](https://github.com/FenixProtocol/nest-algebra/commit/8194fe9a7f9b4cb7afff0ac13d9f34870f683750) and [`11f969070c50973c2a790b3fdf11d41b6fe630e9`](https://github.com/FenixProtocol/nest-algebra/commit/11f969070c50973c2a790b3fdf11d41b6fe630e9)
 
 **Issue summary.** After plugin detachment, the pool and factory registries could disagree. The old Base V1 plugin still extrapolated missing history using the pool's current tick and exposed a misleading live TWAP and fee even though it had stopped recording.
 
@@ -203,7 +205,7 @@ The cap applies to the Nest factory owner wrapper. A holder of the Algebra facto
 
 **Resolution and behavior change.** Base V1 `getSingleTimepoint`, `getTimepoints`, and `getCurrentFee` now require the oracle to be initialized and the plugin to remain attached to the pool. The Nest factory `setPlugin` path synchronizes `pluginByPool` with the forwarded pool update.
 
-**Counter-PoCs.** [`AlgebraBasePluginV1.spec.ts`](src/plugin/test/AlgebraBasePluginV1.spec.ts#L146-L253) rejects timepoint reads before initialization and after detachment. Its [`#getCurrentFee` tests](src/plugin/test/AlgebraBasePluginV1.spec.ts#L357-L370) apply the same checks to dynamic-fee reads. Factory mapping synchronization is checked in [`NestFeePluginFactory.spec.ts`](https://github.com/FenixProtocol/nest-algebra/blob/189728886c3f4ba7032ef3d01e3377c06a601a7b/src/plugin/test/NestFeePluginFactory.spec.ts#L184-L193).
+**Counter-PoCs.** [`AlgebraBasePluginV1.spec.ts`](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/plugin/test/AlgebraBasePluginV1.spec.ts#L146-L253) rejects timepoint reads before initialization and after detachment. Its [`#getCurrentFee` tests](https://github.com/FenixProtocol/nest-algebra/blob/11f969070c50973c2a790b3fdf11d41b6fe630e9/src/plugin/test/AlgebraBasePluginV1.spec.ts#L357-L370) apply the same checks to dynamic-fee reads. Factory mapping synchronization is checked in [`NestFeePluginFactory.spec.ts`](https://github.com/FenixProtocol/nest-algebra/blob/189728886c3f4ba7032ef3d01e3377c06a601a7b/src/plugin/test/NestFeePluginFactory.spec.ts#L184-L193).
 
 ### Issue_37 — Base V1 plugins ignore the deviation-fee default
 
