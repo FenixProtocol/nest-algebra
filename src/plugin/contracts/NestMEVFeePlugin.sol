@@ -24,7 +24,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
   /// A whole-number 0.94 bound also prevents integer fee rounding from adding 95 fee units in one tick.
   uint64 public constant MAX_KLVR = uint64(94 * SCALING_PRECISION);
   uint32 public constant MAX_DEADBAND = 100;
-  uint8 public constant MAX_ORACLE_PRICE_EXP = 60;
+  int8 public constant MAX_ORACLE_PRICE_EXP = 60;
   uint32 public constant MAX_CONFIG_GAP = 2000;
   uint256 internal constant MAX_PRICED_GAP = 10000;
   /// @notice Minimum live slope is 0.01 normalized; permission to configure is not economic approval.
@@ -38,7 +38,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
   uint32 internal _oracleDeadband;
   uint32 internal _sandWindow;
   uint32 internal _oracleSpotIndex;
-  uint8 internal _oraclePriceExp;
+  int8 internal _oraclePriceExp;
   bool internal _oracleInverted;
   uint32 internal _maxConfigGap;
 
@@ -53,7 +53,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     external
     view
     override
-    returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap)
+    returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap)
   {
     return (_klvr, _oracleDeadband, _sandWindow, _oracleSpotIndex, _oraclePriceExp, _oracleInverted, _maxConfigGap);
   }
@@ -64,7 +64,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     uint32 deadband,
     uint32 shortTwapWindow,
     uint32 spotIndex,
-    uint8 priceExp,
+    int8 priceExp,
     bool inverted,
     uint32 maxConfigGap
   ) external override {
@@ -72,7 +72,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     require(klvr <= MAX_KLVR, 'Klvr too high');
     require(klvr == 0 || klvr >= SCALING_PRECISION, 'Klvr too low (raw units?)');
     require(deadband <= MAX_DEADBAND, 'Deadband too high');
-    require(priceExp <= MAX_ORACLE_PRICE_EXP, 'Price exp too high');
+    require(priceExp >= -MAX_ORACLE_PRICE_EXP && priceExp <= MAX_ORACLE_PRICE_EXP, 'Price exp out of range');
     require(maxConfigGap <= MAX_CONFIG_GAP, 'Gap bound too high');
 
     if (_klvr != 0) {

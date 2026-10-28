@@ -35,7 +35,7 @@ uint32 constant MAX_DEADBAND = 100
 
 ### MAX_ORACLE_PRICE_EXP
 ```solidity
-uint8 constant MAX_ORACLE_PRICE_EXP = 60
+int8 constant MAX_ORACLE_PRICE_EXP = 60
 ```
 **Selector**: `0x72b9d23b`
 
@@ -69,7 +69,7 @@ uint256 constant MIN_LVR_EDGE_MARGIN = 100
 ### mevFeeConfig
 
 ```solidity
-function mevFeeConfig() external view returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap)
+function mevFeeConfig() external view returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap)
 ```
 **Selector**: `0x67bcc64c`
 
@@ -83,16 +83,16 @@ Current Nest MEV oracle configuration
 | deadband | uint32 |  |
 | shortTwapWindow | uint32 |  |
 | spotIndex | uint32 |  |
-| priceExp | uint8 |  |
+| priceExp | int8 |  |
 | inverted | bool |  |
 | maxConfigGap | uint32 |  |
 
 ### setOracleConfig
 
 ```solidity
-function setOracleConfig(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap) external
+function setOracleConfig(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap) external
 ```
-**Selector**: `0x30b0d68b`
+**Selector**: `0x99b0f0b8`
 
 Enable, retune, or disable (klvr&#x3D;0) the Nest MEV oracle term.
 
@@ -109,7 +109,7 @@ edge both when the LVR term starts and when the total fee reaches its cap.*
 | deadband | uint32 |  |
 | shortTwapWindow | uint32 |  |
 | spotIndex | uint32 |  |
-| priceExp | uint8 |  |
+| priceExp | int8 |  |
 | inverted | bool |  |
 | maxConfigGap | uint32 |  |
 

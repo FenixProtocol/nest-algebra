@@ -222,13 +222,22 @@ Db = ERC-20 decimals of the pool token representing the HyperCore base
 Dq = ERC-20 decimals of the pool token representing the HyperCore quote
 ```
 
-For the arithmetic currently implemented by `HyperCoreSpotOracle`, the derived exponent is:
+For the signed-exponent arithmetic implemented by `HyperCoreSpotOracle`, the derived exponent is:
 
 ```text
 priceExp = E + Db - Dq
 ```
 
 The exponent is the same in both orientations. Only `inverted` changes.
+
+The library applies the signed exponent as follows:
+
+```text
+token0 = base, token1 = quote: ratio = priceRaw * 10^(-priceExp)
+token0 = quote, token1 = base: ratio = 10^priceExp / priceRaw
+```
+
+Negative values provide the multiplication direction required when the quote token has sufficiently more ERC-20 decimals than the base token.
 
 For a directly linked EVM token, configuration can additionally check the documented Core/EVM decimal relationship:
 
@@ -238,9 +247,9 @@ EVM decimals = weiDecimals + evmExtraWeiDecimals
 
 Use signed arithmetic for this check because `evmExtraWeiDecimals` can be negative. The official linking documentation currently bounds this difference to `[-2, 18]`.
 
-### Recommended rational conversion
+### Equivalent rational conversion
 
-The current oracle library represents decimal normalization only as division by an unsigned power of ten. That cannot represent every possible token-decimal combination. A clearer implementation constructs the exact rational Algebra raw price.
+The signed exponent represents the following exact rational Algebra raw prices. An on-chain metadata implementation can construct these ratios directly instead of accepting an operator-supplied exponent.
 
 When `token0 = base` and `token1 = quote`:
 

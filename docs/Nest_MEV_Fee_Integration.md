@@ -38,7 +38,7 @@ Correct unit conversion is essential when building configuration tooling.
 | Pool and oracle price difference                 | Algebra ticks                                         | One tick is a price ratio of exactly `1.0001`    |
 | `scalingFactor`, `fallbackScalingFactor`, `klvr` | Fee units per tick, multiplied by `SCALING_PRECISION` | `50_000_000 / 1_000_000 = 50` fee units per tick |
 | TWAP windows                                     | Seconds                                               | `60` = one minute                                |
-| Oracle price                                     | `priceRaw / 10^priceExp`                              | `priceRaw = 1e18`, `priceExp = 18` gives price 1 |
+| Oracle price                                     | `priceRaw * 10^-priceExp`                             | `priceRaw = 1e6`, `priceExp = -6` gives `1e12`   |
 
 `SCALING_PRECISION` is `1_000_000`. For the LVR term, 100 fee units per tick is the linear one-tick benchmark. Therefore:
 
@@ -307,7 +307,7 @@ While oracle mode is armed, `scalingFactor` cannot be zero. Changes to `baseFee`
 | `klvr`            | Zero, or from `1_000_000` through `94_000_000`                         |
 | `deadband`        | At most 100 ticks and must pass both edge checks                       |
 | `shortTwapWindow` | From 60 seconds through 12 hours and already covered by stored history |
-| `priceExp`        | At most 60                                                             |
+| `priceExp`        | From -60 through 60                                                     |
 | `maxConfigGap`    | At most 2,000 ticks                                                    |
 
 Arming also requires:
@@ -320,6 +320,15 @@ Arming also requires:
 - `abs(poolTick - oracleTick) <= maxConfigGap` at activation.
 
 While already armed, the oracle identity fields `spotIndex`, `priceExp`, and `inverted` cannot change. Set `klvr` to zero first if the feed identity must be changed.
+
+`priceExp` is signed. The oracle conversion is:
+
+```text
+not inverted: ratio = priceRaw * 10^(-priceExp)
+inverted:     ratio = 10^priceExp / priceRaw
+```
+
+A negative exponent therefore multiplies a non-inverted raw price and divides an inverted price by the corresponding power of ten. Configuration tooling must derive the exponent from the HyperCore market scale, pool-token decimals, and market orientation.
 
 ### Fallback configuration
 
