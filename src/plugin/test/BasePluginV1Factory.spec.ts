@@ -26,9 +26,9 @@ describe('BasePluginV1Factory', () => {
     });
 
     it('does not support custom pool creation hooks', async () => {
-      await expect(
-        pluginFactory.beforeCreatePoolHook(wallet.address, wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, '0x')
-      ).to.be.revertedWith('Hooks not supported');
+      await expect(pluginFactory.beforeCreatePoolHook(wallet.address, wallet.address, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWith(
+        'Hooks not supported'
+      );
       expect(await pluginFactory.pluginByPool(wallet.address)).to.eq(ZERO_ADDRESS);
 
       await expect(pluginFactory.afterCreatePoolHook(ZERO_ADDRESS, wallet.address, ZERO_ADDRESS)).to.be.revertedWith('Hooks not supported');

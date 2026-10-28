@@ -31,12 +31,11 @@ contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint, Ownable2St
         address deployer,
         address creator,
         address tokenA,
-        address tokenB,
-        bytes calldata data
+        address tokenB
     ) external override returns (address customPool) {
         require(msg.sender == deployer, 'Only deployer');
         require(isCustomPoolDeployer[deployer], 'Can`t create custom pools');
-        return IAlgebraFactory(factory).createCustomPool(deployer, creator, tokenA, tokenB, data);
+        return IAlgebraFactory(factory).createCustomPool(deployer, creator, tokenA, tokenB);
     }
 
     /// @inheritdoc IAlgebraCustomPoolEntryPoint
@@ -58,11 +57,10 @@ contract AlgebraCustomPoolEntryPoint is IAlgebraCustomPoolEntryPoint, Ownable2St
         address creator,
         address deployer,
         address token0,
-        address token1,
-        bytes calldata data
+        address token1
     ) external override returns (address) {
         require(msg.sender == factory, 'Only factory');
-        return IAlgebraPluginFactory(deployer).beforeCreatePoolHook(pool, creator, deployer, token0, token1, data);
+        return IAlgebraPluginFactory(deployer).beforeCreatePoolHook(pool, creator, deployer, token0, token1);
     }
 
     /// @inheritdoc IAlgebraPluginFactory

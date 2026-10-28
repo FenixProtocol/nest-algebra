@@ -81,7 +81,6 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
     __Ownable2Step_init();
     _transferOwnership(_initOwner);
 
-    poolDeployer = _poolDeployer;
     defaultTickspacing = Constants.INIT_DEFAULT_TICK_SPACING;
     defaultFee = Constants.INIT_DEFAULT_FEE;
 
@@ -89,14 +88,20 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
 
     emit DefaultTickspacing(Constants.INIT_DEFAULT_TICK_SPACING);
     emit DefaultFee(Constants.INIT_DEFAULT_FEE);
+
+    _setPoolDeployer(_poolDeployer);
   }
 
   /// @notice Updates the pool deployer after upgrading an existing factory proxy.
-  /// @param newPoolDeployer The new pool deployer instance
-  function setPoolDeployer(address newPoolDeployer) external reinitializer(2) onlyOwner {
-    require(newPoolDeployer != address(0));
-    poolDeployer = newPoolDeployer;
-    emit PoolDeployer(newPoolDeployer);
+  /// @dev Must be called atomically with the proxy upgrade.
+  function setPoolDeployer(address _poolDeployer) external reinitializer(2) {
+    require(_poolDeployer != address(0));
+    _setPoolDeployer(_poolDeployer);
+  }
+
+  function _setPoolDeployer(address _poolDeployer) private {
+    poolDeployer = _poolDeployer;
+    emit PoolDeployer(_poolDeployer);
   }
 
   /// @inheritdoc IAlgebraFactory
@@ -157,36 +162,24 @@ contract AlgebraFactoryUpgradeable is IAlgebraFactory, Ownable2StepUpgradeable, 
   }
 
   /// @inheritdoc IAlgebraFactory
-  function createCustomPool(
-    address customDeployer,
-    address creator,
-    address tokenA,
-    address tokenB,
-    bytes calldata data
-  ) external override returns (address customPool) {
+  function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB) external override returns (address customPool) {
     require(hasRole(CUSTOM_POOL_DEPLOYER, msg.sender), 'Can`t create custom pools');
     require(customDeployer != address(0));
     require(tokenA != tokenB);
     (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     require(token0 != address(0));
     require(customPoolByPair[customDeployer][token0][token1] == address(0));
+    customPool = computeCustomPoolAddress(customDeployer, token0, token1);
+    customPoolByPair[customDeployer][token0][token1] = customPool;
+    customPoolByPair[customDeployer][token1][token0] = customPool;
+    deployerByPool[customPool] = customDeployer;
 
-    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(
-      computeCustomPoolAddress(customDeployer, token0, token1),
-      creator,
-      customDeployer,
-      token0,
-      token1,
-      data
-    );
+    address plugin = IAlgebraPluginFactory(msg.sender).beforeCreatePoolHook(customPool, creator, customDeployer, token0, token1);
 
     customPool = IAlgebraPoolDeployer(poolDeployer).deploy(plugin, token0, token1, customDeployer);
 
     IAlgebraPluginFactory(msg.sender).afterCreatePoolHook(plugin, customPool, customDeployer);
 
-    customPoolByPair[customDeployer][token0][token1] = customPool;
-    customPoolByPair[customDeployer][token1][token0] = customPool;
-    deployerByPool[customPool] = customDeployer;
     emit CustomPool(customDeployer, token0, token1, customPool);
 
     if (address(vaultFactory) != address(0)) {

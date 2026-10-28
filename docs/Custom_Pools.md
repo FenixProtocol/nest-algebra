@@ -11,11 +11,17 @@ For every custom deployer, only one pool can exist for a given token pair. A cla
 
 ## Deployment and permissions
 
-For an upgraded Algebra factory, deploy a compatible `AlgebraPoolDeployer` and call the owner-only, one-time reinitializer:
+For an upgraded Algebra factory, deploy a compatible `AlgebraPoolDeployer` and the new factory implementation. Encode the one-time
+`setPoolDeployer` reinitializer and pass it directly to `ProxyAdmin.upgradeAndCall`:
 
 ```solidity
-factory.setPoolDeployer(address(newPoolDeployer));
+bytes memory data = abi.encodeCall(AlgebraFactoryUpgradeable.setPoolDeployer, (address(newPoolDeployer)));
+proxyAdmin.upgradeAndCall(factoryProxy, address(newFactoryImplementation), data);
 ```
+
+The upgrade and reinitializer must execute atomically in this single transaction. Never call `setPoolDeployer` as a standalone transaction before
+or after the upgrade. The function intentionally has no `onlyOwner` modifier so `ProxyAdmin` can call it through the transparent proxy during
+`upgradeAndCall`; its protection is the proxy-admin-controlled upgrade plus the one-time `reinitializer(2)` guard.
 
 Then deploy `AlgebraCustomPoolEntryPoint` with the factory address and configure the control plane:
 
@@ -33,7 +39,7 @@ Updating `poolDeployer` changes deterministic addresses for pools created afterw
 Custom pool creation is exposed by the approved plugin factory:
 
 ```solidity
-address pool = pluginFactory.deployCustomPool(tokenA, tokenB, data);
+address pool = pluginFactory.deployCustomPool(tokenA, tokenB, sqrtPriceX96);
 ```
 
 Creation is private by default. The caller needs the plugin factory's `CUSTOM_POOL_DEPLOYER` role unless its owner enables public creation with:
@@ -57,11 +63,11 @@ caller
   -> entry point after-create hook
   -> plugin factory after-create validation
   -> factory registry updates
+  -> pool initialization at sqrtPriceX96
 ```
 
-The plugin factory records and validates pending creation data, including creator, sorted tokens, custom deployer, expected pool, plugin, and `data` hash. A failure in any hook or validation reverts the complete transaction.
-
-The `data` argument is forwarded through the hook flow and authenticated by the Nest factory. The current Nest factories do not interpret it.
+The plugin factory records and validates pending creation state, including creator, sorted tokens, custom deployer, expected pool, and plugin. It initializes
+the pool before returning. Invalid prices and failures in any hook or validation revert pool deployment, plugin deployment, registry writes, and pending state.
 
 ## Address calculation and lookup
 

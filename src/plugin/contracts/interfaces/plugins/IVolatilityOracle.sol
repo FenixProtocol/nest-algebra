@@ -41,7 +41,8 @@ interface IVolatilityOracle {
   /// @return true if oracle is initialized, otherwise false
   function isInitialized() external view returns (bool);
 
-  /// @dev Reverts if a timepoint at or before the desired timepoint timestamp does not exist.
+  /// @dev Reverts if the oracle is not initialized or is not active for its pool.
+  /// Reverts if a timepoint at or before the desired timepoint timestamp does not exist.
   /// 0 may be passed as `secondsAgo' to return the current cumulative values.
   /// If called with a timestamp falling between two timepoints, returns the counterfactual accumulator values
   /// at exactly the timestamp between the two timepoints.
@@ -52,7 +53,8 @@ interface IVolatilityOracle {
   function getSingleTimepoint(uint32 secondsAgo) external view returns (int56 tickCumulative, uint88 volatilityCumulative);
 
   /// @notice Returns the accumulator values as of each time seconds ago from the given time in the array of `secondsAgos`
-  /// @dev Reverts if `secondsAgos` > oldest timepoint
+  /// @dev Reverts if the oracle is not initialized or is not active for its pool.
+  /// Reverts if any requested timestamp is older than the oldest available timepoint.
   /// @dev `volatilityCumulative` values for timestamps after the last timepoint _should not_ be compared because they may differ due to interpolation errors
   /// @param secondsAgos Each amount of time to look back, in seconds, at which point to return a timepoint
   /// @return tickCumulatives The cumulative tick since the pool was first initialized, as of each `secondsAgo`
@@ -62,6 +64,6 @@ interface IVolatilityOracle {
   /// @notice Fills uninitialized timepoints with nonzero value
   /// @dev Can be used to reduce the gas cost of future swaps
   /// @param startIndex The start index, must be not initialized
-  /// @param amount of slots to fill, startIndex + amount must be <= type(uint16).max
+  /// @param amount of slots to fill, startIndex + amount must be <= 65536
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external;
 }

@@ -8,14 +8,7 @@ contract MockCustomPoolDeployer {
         return address(0);
     }
 
-    function beforeCreatePoolHook(
-        address,
-        address,
-        address,
-        address,
-        address,
-        bytes calldata
-    ) external pure returns (address) {
+    function beforeCreatePoolHook(address, address, address, address, address) external pure returns (address) {
         return address(0);
     }
 
@@ -25,10 +18,9 @@ contract MockCustomPoolDeployer {
         IAlgebraCustomPoolEntryPoint entryPoint,
         address creator,
         address tokenA,
-        address tokenB,
-        bytes calldata data
+        address tokenB
     ) external returns (address pool) {
-        return entryPoint.createCustomPool(address(this), creator, tokenA, tokenB, data);
+        return entryPoint.createCustomPool(address(this), creator, tokenA, tokenB);
     }
 
     function setTickSpacing(IAlgebraCustomPoolEntryPoint entryPoint, address pool, int24 newTickSpacing) external {

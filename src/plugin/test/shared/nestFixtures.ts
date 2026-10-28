@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { setCode } from '@nomicfoundation/hardhat-network-helpers';
 
 import { MockFactory, MockPool } from '../../typechain';
+import { MAX_TICK, MIN_TICK } from './utilities';
 
 export const SPOT_PRECOMPILE = '0x0000000000000000000000000000000000000808';
 export const SQRT_PRICE_1 = 79228162514264337593543950336n;
@@ -9,7 +10,7 @@ export const TEST_START_TIME = 1_601_906_400;
 
 export type NestProduct = 'TWAP' | 'MEV';
 
-export async function nestPluginFixture(product: NestProduct, warm = true) {
+export async function nestPluginFixture(product: NestProduct, warm = true, initialPrice = SQRT_PRICE_1) {
   const mockFactory = (await (await ethers.getContractFactory('MockFactory')).deploy()) as any as MockFactory;
   const entryPointPlaceholder = await (await ethers.getContractFactory('MockHyperCoreSpotOracle')).deploy();
   const implementationName = product === 'TWAP' ? 'MockTimeNestTWAPFeePlugin' : 'MockTimeNestMEVFeePlugin';
@@ -25,10 +26,11 @@ export async function nestPluginFixture(product: NestProduct, warm = true) {
   const plugin: any = await ethers.getContractAt(implementationName, pluginAddress);
   await plugin.advanceTime(TEST_START_TIME);
   await pool.setPlugin(pluginAddress);
-  await pool.initialize(SQRT_PRICE_1);
+  await pool.initialize(initialPrice);
+  await pool.setLiquidityAndTicks(1, MIN_TICK, MAX_TICK);
   if (warm) {
     await plugin.advanceTime(700);
-    await pool.swapToTick(0);
+    await pool.swapToTick((await pool.globalState()).tick);
   }
   return { mockFactory, pool, pluginFactory, plugin, implementation };
 }

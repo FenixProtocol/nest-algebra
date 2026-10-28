@@ -14,7 +14,7 @@ base/cap/scaling/TWAP-window configuration remains in INestTWAPFeeManager.
 ### OracleConfigChanged
 
 ```solidity
-event OracleConfigChanged(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap)
+event OracleConfigChanged(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap)
 ```
 
 Emitted when the Nest MEV oracle configuration changes
@@ -25,7 +25,7 @@ Emitted when the Nest MEV oracle configuration changes
 | deadband | uint32 | D, ticks — gaps within D pay no LVR fee (the structural no-arb band) |
 | shortTwapWindow | uint32 | short self-TWAP window for the sandwich term, seconds |
 | spotIndex | uint32 | configured HyperCore spot-pair index |
-| priceExp | uint8 | power-of-ten divisor mapping the configured raw feed to the Algebra ratio |
+| priceExp | int8 | signed decimal exponent: ratio=raw*10^-exp, or ratio=10^exp/raw when inverted |
 | inverted | bool | precompile quote orientation |
 | maxConfigGap | uint32 | activation-time bound (ticks) on |poolTick - oracleTick| |
 
@@ -60,7 +60,7 @@ Emitted when the oracle-failure fallback slope changes
 ### mevFeeConfig
 
 ```solidity
-function mevFeeConfig() external view returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap)
+function mevFeeConfig() external view returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap)
 ```
 **Selector**: `0x67bcc64c`
 
@@ -74,16 +74,16 @@ Current Nest MEV oracle configuration
 | deadband | uint32 |  |
 | shortTwapWindow | uint32 |  |
 | spotIndex | uint32 |  |
-| priceExp | uint8 |  |
+| priceExp | int8 |  |
 | inverted | bool |  |
 | maxConfigGap | uint32 |  |
 
 ### setOracleConfig
 
 ```solidity
-function setOracleConfig(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap) external
+function setOracleConfig(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap) external
 ```
-**Selector**: `0x30b0d68b`
+**Selector**: `0x99b0f0b8`
 
 Enable, retune, or disable (klvr&#x3D;0) the Nest MEV oracle term.
 
@@ -91,7 +91,8 @@ Enable, retune, or disable (klvr&#x3D;0) the Nest MEV oracle term.
 (klvr &gt; 0) it performs an activation-time gap check: the live |poolTick - oracleTick| must be
 &lt;&#x3D; maxConfigGap. This rejects structurally valid observations that are outside the configured arming
 bound; it does not independently establish that an in-bound feed is economically correct. Enforces
-klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 1.0).*
+klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 0.94), and the configured deadband must preserve an arbitrage
+edge both when the LVR term starts and when the total fee reaches its cap.*
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -99,7 +100,7 @@ klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 1.0).*
 | deadband | uint32 |  |
 | shortTwapWindow | uint32 |  |
 | spotIndex | uint32 |  |
-| priceExp | uint8 |  |
+| priceExp | int8 |  |
 | inverted | bool |  |
 | maxConfigGap | uint32 |  |
 

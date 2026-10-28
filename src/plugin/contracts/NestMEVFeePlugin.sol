@@ -3,6 +3,7 @@ pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraPool.sol';
+import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 
 import './NestTWAPFeePlugin.sol';
 import './libraries/HyperCoreSpotOracle.sol';
@@ -19,9 +20,11 @@ import './interfaces/INestMEVFeeManager.sol';
 /// - Every structurally valid spot observation uses the Nest MEV formula; gap size only saturates the priced input.
 /// - Spot-market manipulation resistance is an external economic assumption measured before arming.
 contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
-  uint64 public constant MAX_KLVR = uint64(100 * SCALING_PRECISION);
+  /// @notice The LVR slope stays strictly below the 0.95 economic break-even slope at the 5% fee cap.
+  /// A whole-number 0.94 bound also prevents integer fee rounding from adding 95 fee units in one tick.
+  uint64 public constant MAX_KLVR = uint64(94 * SCALING_PRECISION);
   uint32 public constant MAX_DEADBAND = 100;
-  uint8 public constant MAX_ORACLE_PRICE_EXP = 60;
+  int8 public constant MAX_ORACLE_PRICE_EXP = 60;
   uint32 public constant MAX_CONFIG_GAP = 2000;
   uint256 internal constant MAX_PRICED_GAP = 10000;
   /// @notice Minimum live slope is 0.01 normalized; permission to configure is not economic approval.
@@ -35,7 +38,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
   uint32 internal _oracleDeadband;
   uint32 internal _sandWindow;
   uint32 internal _oracleSpotIndex;
-  uint8 internal _oraclePriceExp;
+  int8 internal _oraclePriceExp;
   bool internal _oracleInverted;
   uint32 internal _maxConfigGap;
 
@@ -50,7 +53,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     external
     view
     override
-    returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap)
+    returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap)
   {
     return (_klvr, _oracleDeadband, _sandWindow, _oracleSpotIndex, _oraclePriceExp, _oracleInverted, _maxConfigGap);
   }
@@ -61,7 +64,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     uint32 deadband,
     uint32 shortTwapWindow,
     uint32 spotIndex,
-    uint8 priceExp,
+    int8 priceExp,
     bool inverted,
     uint32 maxConfigGap
   ) external override {
@@ -69,7 +72,7 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
     require(klvr <= MAX_KLVR, 'Klvr too high');
     require(klvr == 0 || klvr >= SCALING_PRECISION, 'Klvr too low (raw units?)');
     require(deadband <= MAX_DEADBAND, 'Deadband too high');
-    require(priceExp <= MAX_ORACLE_PRICE_EXP, 'Price exp too high');
+    require(priceExp >= -MAX_ORACLE_PRICE_EXP && priceExp <= MAX_ORACLE_PRICE_EXP, 'Price exp out of range');
     require(maxConfigGap <= MAX_CONFIG_GAP, 'Gap bound too high');
 
     if (_klvr != 0) {
@@ -82,9 +85,9 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
       require(_fallbackScalingFactor != 0, 'Set fallback slope first');
       require(shortTwapWindow >= MIN_TWAP_WINDOW && shortTwapWindow <= MAX_TWAP_WINDOW, 'Invalid short TWAP window');
       require(isTwapReady(shortTwapWindow), 'Short TWAP not ready');
-      require(uint256(deadband) * FEE_UNITS_PER_TICK > uint256(_baseFee) + MIN_LVR_EDGE_MARGIN, 'Insufficient LVR edge');
+      _validateLvrEdge(klvr, deadband, _baseFee, _feeCap);
 
-      (uint160 price, int24 tick, , ) = _getPoolState();
+      (uint160 price, int24 tick, , ) = _getProtectedPoolState();
       require(price != 0, 'Pool not initialized');
       (int24 oracleTick, bool ok) = HyperCoreSpotOracle.getOracleTick(spotIndex, priceExp, inverted);
       require(ok, 'Oracle read failed');
@@ -111,7 +114,10 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
   function setDeviationFeeConfig(uint16 baseFee, uint16 feeCap, uint64 scalingFactor, uint32 twapWindow) external virtual override {
     if (_klvr != 0) {
       require(scalingFactor >= MIN_ORACLE_LIVE_SCALING, 'Sandwich slope below floor');
-      require(uint256(_oracleDeadband) * FEE_UNITS_PER_TICK > uint256(baseFee) + MIN_LVR_EDGE_MARGIN, 'Insufficient LVR edge');
+      // Leave malformed base/cap inputs to the shared setter so callers retain its canonical errors.
+      if (baseFee <= MAX_BASE_FEE && feeCap >= baseFee && feeCap <= MAX_FEE_CAP) {
+        _validateLvrEdge(_klvr, _oracleDeadband, baseFee, feeCap);
+      }
     }
     _setDeviationFeeConfig(baseFee, feeCap, scalingFactor, twapWindow);
   }
@@ -194,6 +200,31 @@ contract NestMEVFeePlugin is NestTWAPFeePlugin, INestMEVFeeManager {
   function _absDiff(int24 a, int24 b) private pure returns (uint256) {
     int256 difference = int256(a) - int256(b);
     return uint256(difference < 0 ? -difference : difference);
+  }
+
+  /// @dev Checks the exact input-fee hurdle both where the LVR term starts and where it reaches the cap.
+  /// Below MAX_KLVR the net arbitrage edge cannot decrease between those endpoints: one tick increases
+  /// the price ratio by 1.0001 while the LVR fee increases by at most 94 fee units.
+  function _validateLvrEdge(uint64 klvr, uint32 deadband, uint16 baseFee, uint16 feeCap) private pure {
+    require(_hasMinimumArbitrageEdge(deadband, baseFee), 'Insufficient LVR edge');
+
+    uint256 dynamicHeadroom = uint256(feeCap) - baseFee;
+    uint256 ticksToCap = (dynamicHeadroom * SCALING_PRECISION + klvr - 1) / klvr;
+    require(_hasMinimumArbitrageEdge(uint256(deadband) + ticksToCap, feeCap), 'Insufficient LVR edge at cap');
+  }
+
+  /// @dev A fee charged on gross input requires priceRatio * (1 - fee) > 1. Evaluating the
+  /// ratio one tick inside `gap` preserves the configured one-tick minimum edge without relying
+  /// on the linear approximation that one price tick always offsets 100 fee units.
+  function _hasMinimumArbitrageEdge(uint256 gap, uint256 fee) private pure returns (bool) {
+    if (gap <= MIN_LVR_EDGE_MARGIN / FEE_UNITS_PER_TICK) return false;
+
+    uint256 edgeGap = gap - MIN_LVR_EDGE_MARGIN / FEE_UNITS_PER_TICK;
+    uint256 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(int24(int256(edgeGap)));
+
+    // Configuration bounds limit edgeGap to < 51k ticks, so both products fit in uint256.
+    uint256 priceRatioX192 = sqrtRatioX96 * sqrtRatioX96;
+    return priceRatioX192 * (SCALING_PRECISION - fee) > (uint256(1) << 192) * SCALING_PRECISION;
   }
 
   /// @dev Reserved layout padding for beacon-proxy storage compatibility.

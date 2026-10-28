@@ -29,6 +29,11 @@ contract BaseV1PluginFactory is NestFeePluginFactory, IBaseV1PluginFactory {
     emit DefaultFeeConfiguration(newConfig);
   }
 
+  /// @inheritdoc INestFeePluginFactory
+  function setDefaultDeviationFeeConfiguration(uint16, uint16, uint64, uint32) external pure override(NestFeePluginFactory, INestFeePluginFactory) {
+    revert('Deviation fee is not supported in V1');
+  }
+
   function _createPlugin(address pool) internal override returns (address plugin) {
     require(pluginByPool[pool] == address(0), 'Already created');
     IAlgebraBasePluginV1 basePlugin = IAlgebraBasePluginV1(address(new BeaconProxy(address(this), '')));

@@ -117,6 +117,7 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
 
   /// @inheritdoc IVolatilityOracle
   function getSingleTimepoint(uint32 secondsAgo) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
+    require(isInitialized && _getPluginInPool() == address(this), 'Not initialized or not attached');
     // `volatilityCumulative` values for timestamps after the last timepoint _should not_ be compared: they may differ due to interpolation errors
     (, int24 tick, , ) = _getPoolState();
     uint16 lastTimepointIndex = timepointIndex;
@@ -129,6 +130,7 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
   function getTimepoints(
     uint32[] memory secondsAgos
   ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
+    require(isInitialized && _getPluginInPool() == address(this), 'Not initialized or not attached');
     // `volatilityCumulative` values for timestamps after the last timepoint _should not_ be compared: they may differ due to interpolation errors
     (, int24 tick, , ) = _getPoolState();
     return timepoints.getTimepoints(_blockTimestamp(), secondsAgos, tick, timepointIndex);
@@ -137,10 +139,11 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
   /// @inheritdoc IVolatilityOracle
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
     require(!timepoints[startIndex].initialized); // if not initialized, then all subsequent ones too
-    require(amount > 0 && type(uint16).max - startIndex >= amount);
+    uint256 endIndex = uint256(startIndex) + amount;
+    require(amount > 0 && endIndex <= UINT16_MODULO);
 
     unchecked {
-      for (uint256 i = startIndex; i < startIndex + amount; ++i) {
+      for (uint256 i = startIndex; i < endIndex; ++i) {
         timepoints[i].blockTimestamp = 1; // will be overwritten
       }
     }
@@ -159,6 +162,7 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
 
   /// @inheritdoc IAlgebraDynamicFeePlugin
   function getCurrentFee() external view override returns (uint16 fee) {
+    require(isInitialized && _getPluginInPool() == address(this), 'Not initialized or not attached');
     uint16 lastIndex = timepointIndex;
     AlgebraFeeConfigurationU144 feeConfig_ = _feeConfig;
     if (feeConfig_.alpha1() | feeConfig_.alpha2() == 0) return feeConfig_.baseFee();
@@ -186,6 +190,7 @@ contract AlgebraBasePluginV1 is IAlgebraBasePluginV1, IAlgebraPlugin, Initializa
 
   /// @inheritdoc IFarmingPlugin
   function setIncentive(address newIncentive) external override {
+    require(isInitialized, 'Not initialized');
     bool toConnect = newIncentive != address(0);
     bool accessAllowed;
     if (toConnect) {

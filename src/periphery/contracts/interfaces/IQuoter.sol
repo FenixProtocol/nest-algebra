@@ -10,7 +10,8 @@ pragma abicoder v2;
 /// https://github.com/Uniswap/v3-periphery
 interface IQuoter {
     /// @notice Returns the amount out received for a given exact input swap without executing the swap
-    /// @param path The path of the swap, i.e. each token pair
+    /// @param path The swap path encoded as `tokenIn, deployer, tokenOut` for each hop.
+    /// Use address(0) as the deployer for classic pools
     /// @param amountIn The amount of the first token to swap
     /// @return amountOut The amount of the last token that would be received
     function quoteExactInput(bytes memory path, uint256 amountIn)
@@ -33,7 +34,8 @@ interface IQuoter {
     ) external returns (uint256 amountOut, uint16 fee);
 
     /// @notice Returns the amount in required for a given exact output swap without executing the swap
-    /// @param path The path of the swap, i.e. each token pair. Path must be provided in reverse order
+    /// @param path The swap path encoded in reverse order as `tokenOut, deployer, tokenIn` for each hop.
+    /// Use address(0) as the deployer for classic pools
     /// @param amountOut The amount of the last token to receive
     /// @return amountIn The amount of first token required to be paid
     function quoteExactOutput(bytes memory path, uint256 amountOut)

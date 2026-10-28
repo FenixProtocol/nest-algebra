@@ -1,9 +1,9 @@
-import { AbiCoder, MaxUint256, ZeroAddress } from 'ethers';
+import { AbiCoder, MaxUint256, ZeroAddress, toBeHex } from 'ethers';
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 import completeFixture from './shared/completeFixture';
-import { FeeAmount, TICK_SPACINGS } from './shared/constants';
+import { FeeAmount, MaxUint128, TICK_SPACINGS } from './shared/constants';
 import { encodePriceSqrt } from './shared/encodePriceSqrt';
 import { expect } from './shared/expect';
 import { getMaxTick, getMinTick } from './shared/ticks';
@@ -326,10 +326,13 @@ describe('Periphery reentrancy protection', function () {
       await prepareNativePositionPool();
     const nftAddress = await nft.getAddress();
 
-    await nft.multicall([
-      nft.interface.encodeFunctionData('mint', [nativeOnlyMint(attacker.address)]),
-      nft.interface.encodeFunctionData('refundNativeToken'),
-    ], { value: nativeAmount });
+    await nft.multicall(
+      [
+        nft.interface.encodeFunctionData('mint', [nativeOnlyMint(attacker.address)]),
+        nft.interface.encodeFunctionData('refundNativeToken'),
+      ],
+      { value: nativeAmount }
+    );
 
     const MaliciousPermitToken = await ethers.getContractFactory('MaliciousPermitReentrantToken');
     const maliciousToken = await MaliciousPermitToken.deploy(nftAddress);
@@ -397,5 +400,153 @@ describe('Periphery reentrancy protection', function () {
     await expectGuardRevert(await maliciousToken.attackResult());
     expect(await nft.balanceOf(attacker.address)).to.equal(0n);
     expect(await nft.ownerOf(2)).to.equal(victim.address);
+  });
+
+  it('blocks a malicious collected token from sweeping assets held by the manager', async () => {
+    const [owner, recipient, thief] = await ethers.getSigners();
+    const { nft, tokens } = await loadFixture(completeFixture);
+    const ReentrantCollectToken = await ethers.getContractFactory('ReentrantCollectToken');
+    const reentrantToken = await ReentrantCollectToken.deploy(MaxUint256 / 4n);
+    const safeToken = tokens[0];
+    const reentrantTokenAddress = await reentrantToken.getAddress();
+    const safeTokenAddress = await safeToken.getAddress();
+    const [token0, token1] =
+      reentrantTokenAddress.toLowerCase() < safeTokenAddress.toLowerCase()
+        ? [reentrantTokenAddress, safeTokenAddress]
+        : [safeTokenAddress, reentrantTokenAddress];
+    const safeTokenIsToken0 = token0 === safeTokenAddress;
+    const tickLower = getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]);
+    const tickUpper = getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]);
+    const nftAddress = await nft.getAddress();
+
+    await nft.createAndInitializePoolIfNecessary(token0, token1, encodePriceSqrt(1, 1));
+    await reentrantToken.approve(nftAddress, MaxUint256);
+    await safeToken.approve(nftAddress, MaxUint256);
+
+    const mintParams = {
+      token0,
+      token1,
+      deployer: ZeroAddress,
+      tickLower,
+      tickUpper,
+      amount0Desired: 1_000_000,
+      amount1Desired: 1_000_000,
+      amount0Min: 0,
+      amount1Min: 0,
+      recipient: owner.address,
+      deadline: 1,
+    };
+    await nft.mint(mintParams);
+    await nft.mint(mintParams);
+
+    const firstPosition = await nft.positions(1);
+    const secondPosition = await nft.positions(2);
+    await nft.decreaseLiquidity({
+      tokenId: 1,
+      liquidity: firstPosition.liquidity,
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: 1,
+    });
+    await nft.decreaseLiquidity({
+      tokenId: 2,
+      liquidity: secondPosition.liquidity,
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: 1,
+    });
+
+    const totalSafeTokensOwed =
+      (safeTokenIsToken0 ? (await nft.positions(1)).tokensOwed0 : (await nft.positions(1)).tokensOwed1) +
+      (safeTokenIsToken0 ? (await nft.positions(2)).tokensOwed0 : (await nft.positions(2)).tokensOwed1);
+    const sweepData = nft.interface.encodeFunctionData('sweepToken', [safeTokenAddress, 0, thief.address]);
+    // The first collection is intentionally benign. The callback occurs during the second collection,
+    // while the manager is holding assets collected by the first multicall element.
+    await reentrantToken.configureAttack(nftAddress, sweepData, 1);
+
+    const collectParams = (tokenId: bigint) => ({
+      tokenId,
+      recipient: ZeroAddress,
+      amount0Max: MaxUint128,
+      amount1Max: MaxUint128,
+    });
+    const recipientBefore = await safeToken.balanceOf(recipient.address);
+    const thiefBefore = await safeToken.balanceOf(thief.address);
+    await nft.multicall([
+      nft.interface.encodeFunctionData('collect', [collectParams(1n)]),
+      nft.interface.encodeFunctionData('collect', [collectParams(2n)]),
+      nft.interface.encodeFunctionData('sweepToken', [safeTokenAddress, totalSafeTokensOwed, recipient.address]),
+    ]);
+
+    expect(await reentrantToken.attackSucceeded()).to.equal(false);
+    await expectGuardRevert(await reentrantToken.attackResult());
+    expect(await safeToken.balanceOf(thief.address)).to.equal(thiefBefore);
+    expect(await safeToken.balanceOf(recipient.address)).to.equal(recipientBefore + totalSafeTokensOwed);
+    expect(await safeToken.balanceOf(nftAddress)).to.equal(0n);
+  });
+
+  it('blocks a plugin hook from decreasing liquidity during an increase', async () => {
+    const [owner] = await ethers.getSigners();
+    const { factory, nft, tokens } = await loadFixture(completeFixture);
+    const [token0, token1] = [await tokens[0].getAddress(), await tokens[1].getAddress()];
+    const tickLower = getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]);
+    const tickUpper = getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]);
+    const nftAddress = await nft.getAddress();
+
+    await nft.createAndInitializePoolIfNecessary(token0, token1, encodePriceSqrt(1, 1));
+    await tokens[0].approve(nftAddress, MaxUint256);
+    await tokens[1].approve(nftAddress, MaxUint256);
+    await nft.mint({
+      token0,
+      token1,
+      deployer: ZeroAddress,
+      tickLower,
+      tickUpper,
+      amount0Desired: 1_000_000,
+      amount1Desired: 1_000_000,
+      amount0Min: 0,
+      amount1Min: 0,
+      recipient: owner.address,
+      deadline: 1,
+    });
+
+    const ReentrantPositionPlugin = await ethers.getContractFactory('ReentrantPositionPlugin');
+    const plugin = await ReentrantPositionPlugin.deploy(nftAddress);
+    const poolAddress = await factory.poolByPair(token0, token1);
+    const pool = await ethers.getContractAt('IAlgebraPool', poolAddress);
+    await pool.setPlugin(await plugin.getAddress());
+    await pool.setPluginConfig(4); // BEFORE_POSITION_MODIFY_FLAG
+    await nft.approve(await plugin.getAddress(), 1);
+
+    const positionBefore = await nft.positions(1);
+    const nestedDecrease = nft.interface.encodeFunctionData('decreaseLiquidity', [
+      { tokenId: 1, liquidity: positionBefore.liquidity, amount0Min: 0, amount1Min: 0, deadline: 1 },
+    ]);
+    await plugin.configureAttack(nestedDecrease);
+
+    await nft.increaseLiquidity({
+      tokenId: 1,
+      amount0Desired: 1_000_000,
+      amount1Desired: 1_000_000,
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: 1,
+    });
+
+    const positionAfter = await nft.positions(1);
+    const poolPositionKey = toBeHex(
+      (BigInt(nftAddress) << 48n) |
+        (BigInt.asUintN(24, BigInt(tickLower)) << 24n) |
+        BigInt.asUintN(24, BigInt(tickUpper)),
+      32
+    );
+    const poolPosition = await pool.positions(poolPositionKey);
+
+    expect(await plugin.attackSucceeded()).to.equal(false);
+    await expectGuardRevert(await plugin.attackResult());
+    expect(positionAfter.liquidity).to.equal(positionBefore.liquidity * 2n);
+    expect(positionAfter.liquidity).to.equal(poolPosition.liquidity);
+    expect(positionAfter.tokensOwed0).to.equal(0n);
+    expect(positionAfter.tokensOwed1).to.equal(0n);
   });
 });

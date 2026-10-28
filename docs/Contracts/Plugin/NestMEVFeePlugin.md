@@ -24,6 +24,9 @@ uint64 constant MAX_KLVR
 ```
 **Selector**: `0x100d745f`
 
+The LVR slope stays strictly below the 0.95 economic break-even slope at the 5% fee cap.
+A whole-number 0.94 bound also prevents integer fee rounding from adding 95 fee units in one tick.
+
 ### MAX_DEADBAND
 ```solidity
 uint32 constant MAX_DEADBAND = 100
@@ -32,7 +35,7 @@ uint32 constant MAX_DEADBAND = 100
 
 ### MAX_ORACLE_PRICE_EXP
 ```solidity
-uint8 constant MAX_ORACLE_PRICE_EXP = 60
+int8 constant MAX_ORACLE_PRICE_EXP = 60
 ```
 **Selector**: `0x72b9d23b`
 
@@ -47,6 +50,8 @@ uint32 constant MAX_CONFIG_GAP = 2000
 uint64 constant MIN_ORACLE_LIVE_SCALING
 ```
 **Selector**: `0xfbbd23a7`
+
+Minimum live slope is 0.01 normalized; permission to configure is not economic approval.
 
 ### MAX_FALLBACK_SCALING_FACTOR
 ```solidity
@@ -64,7 +69,7 @@ uint256 constant MIN_LVR_EDGE_MARGIN = 100
 ### mevFeeConfig
 
 ```solidity
-function mevFeeConfig() external view returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap)
+function mevFeeConfig() external view returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap)
 ```
 **Selector**: `0x67bcc64c`
 
@@ -78,16 +83,16 @@ Current Nest MEV oracle configuration
 | deadband | uint32 |  |
 | shortTwapWindow | uint32 |  |
 | spotIndex | uint32 |  |
-| priceExp | uint8 |  |
+| priceExp | int8 |  |
 | inverted | bool |  |
 | maxConfigGap | uint32 |  |
 
 ### setOracleConfig
 
 ```solidity
-function setOracleConfig(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap) external
+function setOracleConfig(uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap) external
 ```
-**Selector**: `0x30b0d68b`
+**Selector**: `0x99b0f0b8`
 
 Enable, retune, or disable (klvr&#x3D;0) the Nest MEV oracle term.
 
@@ -95,7 +100,8 @@ Enable, retune, or disable (klvr&#x3D;0) the Nest MEV oracle term.
 (klvr &gt; 0) it performs an activation-time gap check: the live |poolTick - oracleTick| must be
 &lt;&#x3D; maxConfigGap. This rejects structurally valid observations that are outside the configured arming
 bound; it does not independently establish that an in-bound feed is economically correct. Enforces
-klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 1.0).*
+klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 0.94), and the configured deadband must preserve an arbitrage
+edge both when the LVR term starts and when the total fee reaches its cap.*
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
@@ -103,7 +109,7 @@ klvr &lt;&#x3D; MAX_KLVR (slope &lt;&#x3D; 1.0).*
 | deadband | uint32 |  |
 | shortTwapWindow | uint32 |  |
 | spotIndex | uint32 |  |
-| priceExp | uint8 |  |
+| priceExp | int8 |  |
 | inverted | bool |  |
 | maxConfigGap | uint32 |  |
 
@@ -114,8 +120,8 @@ function setDeviationFeeConfig(uint16 baseFee, uint16 feeCap, uint64 scalingFact
 ```
 **Selector**: `0xfa0c811f`
 
-While armed, the sandwich slope is pinned at normalized slope 1.0. The intended 60-second
-shortTwapWindow limits the duration of lag after a genuine move but does not eliminate it.
+While armed, the short-TWAP slope is configurable from normalized 0.01 to 1.0.
+Lower slopes reduce the surcharge, not the TWAP&#x27;s lag duration. Economic protection requires review.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |

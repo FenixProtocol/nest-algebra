@@ -37,13 +37,7 @@ export async function createInitializedCustomPool({
 
   const customDeployer = await pluginFactory.getAddress();
   await entryPoint.setCustomPoolDeployer(customDeployer, true);
-  await pluginFactory.createCustomPool(
-    await entryPoint.getAddress(),
-    wallet.address,
-    tokenAddressA,
-    tokenAddressB,
-    '0x'
-  );
+  await pluginFactory.createCustomPool(await entryPoint.getAddress(), wallet.address, tokenAddressA, tokenAddressB);
 
   const poolAddress = await factory.customPoolByPair(customDeployer, tokenAddressA, tokenAddressB);
   await poolAtAddress(poolAddress, wallet).initialize(encodePriceSqrt(1, 1));

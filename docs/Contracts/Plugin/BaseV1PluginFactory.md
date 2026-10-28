@@ -27,7 +27,7 @@ The deployment setup must also configure permissions on the Algebra core factory
 The main function is:
 
 ```solidity
-deployCustomPool(address tokenA, address tokenB, bytes data)
+deployCustomPool(address tokenA, address tokenB, uint160 sqrtPriceX96)
 ```
 
 Before creating a pool, the contract checks:
@@ -37,9 +37,6 @@ Before creating a pool, the contract checks:
 
 The factory does not restrict custom-pool creation by token address.
 
-The `data` parameter is forwarded through the custom pool hook flow and included in hook validation, but it is not interpreted by
-`BaseV1PluginFactory` for now.
-
 During creation, the factory:
 
 1. Computes the expected custom pool address through the Algebra core factory.
@@ -47,6 +44,7 @@ During creation, the factory:
 3. Receives `beforeCreatePoolHook` from the entry point.
 4. Deploys a new beacon-proxy `AlgebraBasePluginV1` plugin for the expected pool.
 5. Receives `afterCreatePoolHook` from the entry point and verifies the pool, plugin, and deployer.
+6. Initializes the new pool at `sqrtPriceX96`; an invalid price reverts the entire creation transaction.
 
 ## Admin Controls
 

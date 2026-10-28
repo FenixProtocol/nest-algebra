@@ -161,15 +161,17 @@ function initialize(address _poolDeployer, address _initOwner) external
 ### setPoolDeployer
 
 ```solidity
-function setPoolDeployer(address newPoolDeployer) external
+function setPoolDeployer(address _poolDeployer) external
 ```
 **Selector**: `0x1aa3e95d`
 
 Updates the pool deployer after upgrading an existing factory proxy.
 
+*Developer note: Must be called atomically with the proxy upgrade.*
+
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| newPoolDeployer | address | The new pool deployer instance |
+| _poolDeployer | address |  |
 
 ### owner
 
@@ -299,9 +301,9 @@ The call will revert if the pool already exists or the token arguments are inval
 ### createCustomPool
 
 ```solidity
-function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB, bytes data) external returns (address customPool)
+function createCustomPool(address customDeployer, address creator, address tokenA, address tokenB) external returns (address customPool)
 ```
-**Selector**: `0xdbbf3db4`
+**Selector**: `0x13b6a2d2`
 
 Creates a custom pool for the given two tokens using &#x60;customDeployer&#x60;
 
@@ -311,7 +313,6 @@ Creates a custom pool for the given two tokens using &#x60;customDeployer&#x60;
 | creator | address | The initiator of custom pool creation |
 | tokenA | address | One of the two tokens in the desired pool |
 | tokenB | address | The other of the two tokens in the desired pool |
-| data | bytes | Additional data for plugin creation |
 
 **Returns:**
 

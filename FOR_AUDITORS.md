@@ -9,13 +9,19 @@ Classic pools remain identified by their sorted token pair. A custom pool is ide
 
 ## Required deployment and custom-pool flow
 
-1. Upgrade `AlgebraFactoryUpgradeable` and execute its owner-only `setPoolDeployer` reinitializer with the new `AlgebraPoolDeployer`.
+1. Upgrade `AlgebraFactoryUpgradeable` by passing the encoded `setPoolDeployer(newPoolDeployer)` reinitializer call directly to
+   `ProxyAdmin.upgradeAndCall`. The upgrade and reinitialization must execute atomically in that single transaction.
 2. Deploy and configure `AlgebraCustomPoolEntryPoint`; grant it the factory's `CUSTOM_POOL_DEPLOYER` role and any required pool-administrator permissions.
 3. Deploy a Nest fee-plugin factory, allowlist it in the entry point, and grant its required factory roles.
 4. The approved factory calls `deployCustomPool`. It records pending creation data, calls the entry point, and the entry point calls `AlgebraFactoryUpgradeable.createCustomPool`.
 5. The factory invokes the entry point's before/after creation hooks. The fee-plugin factory must create the expected beacon proxy, validate the pending creator/tokens/data/plugin, and mark only the resulting pool as custom.
 
 Audit this flow atomically: authorization, deterministic address calculation, hook inputs, pending-state lifecycle, plugin initialization, factory registry writes, and failure rollback must all agree.
+
+`setPoolDeployer` intentionally has no `onlyOwner` modifier because the caller observed during `upgradeAndCall` is `ProxyAdmin`, not the factory
+owner. Its safety relies on the proxy admin authorizing the upgrade and consuming reinitializer version 2 atomically. Treat any deployment plan
+that upgrades first and calls `setPoolDeployer` separately as unsafe: the factory is temporarily unusable for pool creation and any account can
+front-run the unguarded reinitializer.
 
 ## In-scope contracts and test focus
 

@@ -3,6 +3,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
 import { expect } from './shared/expect';
 import { installSpotOracle, nestPluginFixture } from './shared/nestFixtures';
+import { encodePriceSqrt, MAX_TICK } from './shared/utilities';
 
 const BASE = 1_000;
 const CAP = 10_000;
@@ -17,6 +18,7 @@ const PRICE_EXP = 18;
 const CONFIG_GAP = 200;
 const MIN_SANDWICH_SLOPE = 1_000_000;
 const MAX_SANDWICH_SLOPE = 100_000_000;
+const MAX_LVR_SLOPE = 94_000_000;
 const MAX_UINT64 = (1n << 64n) - 1n;
 
 type ArmOptions = {
@@ -59,6 +61,106 @@ async function alignOracleWithPool(pool: any, oracle: any) {
 }
 
 describe('NestMEVFeePlugin', () => {
+  it('uses the liquid edge for the live gap and block-start tick after an empty-range park', async () => {
+    const { pool, plugin } = await loadFixture(fixture);
+    await arm(plugin, { slope: MIN_SANDWICH_SLOPE, klvr: 1_000_000, deadband: 100 });
+
+    await pool.swapToTickInDirection(800_000, false);
+    await pool.setLiquidityAndTicks(0, 600, MAX_TICK);
+    await plugin.advanceTime(7);
+    await pool.swapToTickInDirection(599, true);
+
+    expect((await plugin.blockStartState())[1]).to.eq(599);
+    expect((await pool.globalState()).fee).to.be.lt(CAP);
+    expect(await plugin.getCurrentFee()).to.be.lt(CAP);
+  });
+
+  for (const { label, initialPrice, priceExp, inverted, expectedOracleTick } of [
+    {
+      label: 'token0 6 decimals and token1 18 decimals',
+      initialPrice: encodePriceSqrt(10n ** 12n, 1n),
+      priceExp: -6,
+      inverted: false,
+      expectedOracleTick: 276_324n,
+    },
+    {
+      label: 'token0 18 decimals and token1 6 decimals',
+      initialPrice: encodePriceSqrt(1n, 10n ** 12n),
+      priceExp: -6,
+      inverted: true,
+      expectedOracleTick: -276_325n,
+    },
+    {
+      label: 'token0 8 decimals and token1 18 decimals',
+      initialPrice: encodePriceSqrt(10n ** 10n, 1n),
+      priceExp: -4,
+      inverted: false,
+      expectedOracleTick: 230_270n,
+    },
+    {
+      label: 'token0 18 decimals and token1 8 decimals',
+      initialPrice: encodePriceSqrt(1n, 10n ** 10n),
+      priceExp: -4,
+      inverted: true,
+      expectedOracleTick: -230_271n,
+    },
+    {
+      label: 'token0 6 decimals and token1 8 decimals',
+      initialPrice: encodePriceSqrt(10n ** 2n, 1n),
+      priceExp: 4,
+      inverted: false,
+      expectedOracleTick: 46_054n,
+    },
+    {
+      label: 'token0 8 decimals and token1 6 decimals',
+      initialPrice: encodePriceSqrt(1n, 10n ** 2n),
+      priceExp: 4,
+      inverted: true,
+      expectedOracleTick: -46_055n,
+    },
+    {
+      label: 'token0 and token1 both with 18 decimals',
+      initialPrice: encodePriceSqrt(1n, 1n),
+      priceExp: 6,
+      inverted: false,
+      expectedOracleTick: 0n,
+    },
+    {
+      label: 'token0 and token1 both with 18 decimals using an inverted market',
+      initialPrice: encodePriceSqrt(1n, 1n),
+      priceExp: 6,
+      inverted: true,
+      expectedOracleTick: 0n,
+    },
+  ]) {
+    it(`arms and applies the live oracle fee for ${label}`, async () => {
+      const decimalFixture = async () => {
+        const deployed = await nestPluginFixture('MEV', true, initialPrice);
+        const oracle = await installSpotOracle(0, 10n ** 6n);
+        return { ...deployed, oracle };
+      };
+      const { pool, plugin } = await loadFixture(decimalFixture);
+
+      expect((await pool.globalState()).tick).to.eq(expectedOracleTick);
+      await plugin.setFallbackScalingFactor(FALLBACK_SLOPE);
+      await plugin.setDeviationFeeConfig(BASE, CAP, MIN_SANDWICH_SLOPE, LONG_TWAP);
+      await expect(plugin.setOracleConfig(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, priceExp, inverted, CONFIG_GAP))
+        .to.emit(plugin, 'OracleConfigChanged')
+        .withArgs(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, priceExp, inverted, CONFIG_GAP);
+
+      expect((await plugin.mevFeeConfig())[4]).to.eq(priceExp);
+      expect(await plugin.getCurrentFee()).to.eq(BASE);
+
+      const displacedTick = expectedOracleTick + 50n;
+      await pool.swapToTick(displacedTick);
+      const expectedFee = BASE + (50 - DEADBAND) * (KLVR / 1_000_000);
+      expect(await plugin.getCurrentFee()).to.eq(expectedFee);
+
+      await pool.swapToTick(displacedTick);
+      expect((await pool.globalState()).fee).to.eq(expectedFee);
+    });
+  }
+
   for (const slope of [MIN_SANDWICH_SLOPE, 1_000_001, 20_000_000, 40_000_000, 99_999_999, MAX_SANDWICH_SLOPE]) {
     it(`accepts live slope ${slope} during activation and armed retuning`, async () => {
       const { plugin } = await loadFixture(fixture);
@@ -327,11 +429,13 @@ describe('NestMEVFeePlugin', () => {
     );
     await expect(plugin.connect(outsider).setFallbackScalingFactor(FALLBACK_SLOPE)).to.be.revertedWith('Not fee manager');
 
-    await expect(plugin.setOracleConfig(100_000_001, DEADBAND, SHORT_TWAP, SPOT_INDEX, PRICE_EXP, false, CONFIG_GAP)).to.be.revertedWith(
+    expect(await plugin.MAX_KLVR()).to.eq(MAX_LVR_SLOPE);
+    await expect(plugin.setOracleConfig(MAX_LVR_SLOPE + 1, DEADBAND, SHORT_TWAP, SPOT_INDEX, PRICE_EXP, false, CONFIG_GAP)).to.be.revertedWith(
       'Klvr too high'
     );
     await expect(plugin.setOracleConfig(KLVR, 101, SHORT_TWAP, SPOT_INDEX, PRICE_EXP, false, CONFIG_GAP)).to.be.revertedWith('Deadband too high');
-    await expect(plugin.setOracleConfig(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, 61, false, CONFIG_GAP)).to.be.revertedWith('Price exp too high');
+    await expect(plugin.setOracleConfig(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, -61, false, CONFIG_GAP)).to.be.revertedWith('Price exp out of range');
+    await expect(plugin.setOracleConfig(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, 61, false, CONFIG_GAP)).to.be.revertedWith('Price exp out of range');
     await expect(plugin.setOracleConfig(KLVR, DEADBAND, SHORT_TWAP, SPOT_INDEX, PRICE_EXP, false, 2_001)).to.be.revertedWith('Gap bound too high');
 
     await plugin.setDeviationFeeConfig(BASE, CAP, SANDWICH_SLOPE, LONG_TWAP);
@@ -340,6 +444,23 @@ describe('NestMEVFeePlugin', () => {
     );
     await mockFactory.grantRole(await plugin.DEVIATION_FEE_MANAGER(), outsider.address);
     await plugin.connect(outsider).setFallbackScalingFactor(FALLBACK_SLOPE);
+  });
+
+  it('keeps a one-tick arbitrage edge through the 5% fee cap at the maximum LVR slope', async () => {
+    const { plugin } = await loadFixture(fixture);
+    await arm(plugin, { feeCap: 50_000, klvr: MAX_LVR_SLOPE, deadband: 12 });
+
+    expect((await plugin.mevFeeConfig())[0]).to.eq(MAX_LVR_SLOPE);
+    expect((await plugin.deviationFeeConfig())[1]).to.eq(50_000);
+  });
+
+  it('revalidates the exact LVR edge when fee configuration changes while armed', async () => {
+    const { plugin } = await loadFixture(fixture);
+    await arm(plugin, { feeCap: 50_000, klvr: MAX_LVR_SLOPE, deadband: 12 });
+
+    await expect(plugin.setDeviationFeeConfig(1_100, 50_000, SANDWICH_SLOPE, LONG_TWAP)).to.be.revertedWith('Insufficient LVR edge');
+    await expect(plugin.setDeviationFeeConfig(BASE, BASE - 1, SANDWICH_SLOPE, LONG_TWAP)).to.be.revertedWith('Invalid fee cap');
+    expect(await plugin.deviationFeeConfig()).to.deep.eq([BigInt(BASE), 50_000n, BigInt(SANDWICH_SLOPE), BigInt(LONG_TWAP)]);
   });
 
   it('stores and emits exact MEV configuration values', async () => {

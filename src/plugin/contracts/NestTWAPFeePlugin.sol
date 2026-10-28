@@ -2,6 +2,7 @@
 pragma solidity =0.8.20;
 
 import '@cryptoalgebra/integral-core/contracts/libraries/Plugins.sol';
+import '@cryptoalgebra/integral-core/contracts/libraries/TickMath.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/IAlgebraFactory.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/plugin/IAlgebraPlugin.sol';
 import '@cryptoalgebra/integral-core/contracts/interfaces/pool/IAlgebraPoolState.sol';
@@ -45,7 +46,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   uint16 public constant MAX_BASE_FEE = 30_000; // 3%
   uint16 public constant MAX_FEE_CAP = 50_000; // 5%
   uint32 public constant MIN_TWAP_WINDOW = 60; // 1 minute
-  // Bounded to ~12h: the timepoint ring buffer (65535 slots, written <=1/sec) cannot guarantee a full
+  // Bounded to ~12h: the timepoint ring buffer (65536 slots, written <=1/sec) cannot guarantee a full
   // day of history on a busy pool, so a >12h window could silently disable the dynamic fee.
   uint32 public constant MAX_TWAP_WINDOW = 12 hours;
 
@@ -113,6 +114,47 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
     (price, tick, fee, pluginConfig, , ) = IAlgebraPoolState(pool).globalState();
   }
 
+  /// @dev Returns a manipulation-resistant tick for directionless oracle and fee views. When there is no
+  /// active liquidity, the raw pool tick can be moved through empty space without token input, so extrapolate
+  /// from the last tick accepted by the recorder instead.
+  function _getProtectedPoolState() internal view returns (uint160 price, int24 tick, uint16 fee, uint8 pluginConfig) {
+    uint128 activeLiquidity;
+    (price, tick, fee, pluginConfig, activeLiquidity, , ) = IAlgebraPoolState(pool).safelyGetStateOfAMM();
+    if (activeLiquidity == 0 && isInitialized) tick = timepoints[timepointIndex].tick;
+  }
+
+  /// @dev Selects the first tick with liquidity in the swap direction without walking the tick list. With
+  /// exactly zero active liquidity, an adjacent non-sentinel initialized tick is necessarily the boundary
+  /// that activates liquidity. If the swap points away from every range, use the opposite real boundary.
+  /// A pool with no initialized ranges keeps the last protected oracle tick.
+  function _getSwapTick(
+    int24 currentTick,
+    uint128 activeLiquidity,
+    int24 nextTick,
+    int24 previousTick,
+    bool zeroToOne
+  ) internal view returns (int24) {
+    if (activeLiquidity != 0) return currentTick;
+
+    if (zeroToOne) {
+      if (previousTick != TickMath.MIN_TICK) return previousTick - 1;
+      if (nextTick != TickMath.MAX_TICK) return nextTick;
+    } else {
+      if (nextTick != TickMath.MAX_TICK) return nextTick;
+      if (previousTick != TickMath.MIN_TICK) return previousTick - 1;
+    }
+
+    return timepoints[timepointIndex].tick;
+  }
+
+  function _getSwapState(bool zeroToOne) internal view returns (int24 tick, uint16 fee) {
+    uint128 activeLiquidity;
+    int24 nextTick;
+    int24 previousTick;
+    (, tick, fee, , activeLiquidity, nextTick, previousTick) = IAlgebraPoolState(pool).safelyGetStateOfAMM();
+    tick = _getSwapTick(tick, activeLiquidity, nextTick, previousTick, zeroToOne);
+  }
+
   function _getPluginInPool() internal view returns (address plugin) {
     return IAlgebraPool(pool).plugin();
   }
@@ -154,7 +196,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   function getSingleTimepoint(uint32 secondsAgo) external view override returns (int56 tickCumulative, uint88 volatilityCumulative) {
     _requireActiveRecorder();
     // `volatilityCumulative` values for timestamps after the last timepoint _should not_ be compared: they may differ due to interpolation errors
-    (, int24 tick, , ) = _getPoolState();
+    (, int24 tick, , ) = _getProtectedPoolState();
     uint16 lastTimepointIndex = timepointIndex;
     uint16 oldestIndex = timepoints.getOldestIndex(lastTimepointIndex);
     VolatilityOracle.Timepoint memory result = timepoints.getSingleTimepoint(_blockTimestamp(), secondsAgo, tick, lastTimepointIndex, oldestIndex);
@@ -167,17 +209,18 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   ) external view override returns (int56[] memory tickCumulatives, uint88[] memory volatilityCumulatives) {
     _requireActiveRecorder();
     // `volatilityCumulative` values for timestamps after the last timepoint _should not_ be compared: they may differ due to interpolation errors
-    (, int24 tick, , ) = _getPoolState();
+    (, int24 tick, , ) = _getProtectedPoolState();
     return timepoints.getTimepoints(_blockTimestamp(), secondsAgos, tick, timepointIndex);
   }
 
   /// @inheritdoc IVolatilityOracle
   function prepayTimepointsStorageSlots(uint16 startIndex, uint16 amount) external override {
     require(!timepoints[startIndex].initialized); // if not initialized, then all subsequent ones too
-    require(amount > 0 && type(uint16).max - startIndex >= amount);
+    uint256 endIndex = uint256(startIndex) + amount;
+    require(amount > 0 && endIndex <= UINT16_MODULO);
 
     unchecked {
-      for (uint256 i = startIndex; i < startIndex + amount; ++i) {
+      for (uint256 i = startIndex; i < endIndex; ++i) {
         timepoints[i].blockTimestamp = 1; // will be overwritten
       }
     }
@@ -211,7 +254,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   /// @inheritdoc INestTWAPFeeManager
   function getTwapTick() external view override returns (int24 twapTick, bool available) {
     _requireActiveRecorder();
-    (, int24 tick, , ) = _getPoolState();
+    (, int24 tick, , ) = _getProtectedPoolState();
     return _tryGetTwapTick(tick, _twapWindow);
   }
 
@@ -227,7 +270,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   /// @inheritdoc IAlgebraDynamicFeePlugin
   function getCurrentFee() external view override returns (uint16 fee) {
     require(_isCurrentPlugin(), 'Plugin inactive');
-    (, int24 tick, , ) = _getPoolState();
+    (, int24 tick, , ) = _getProtectedPoolState();
     return _getDeviationFee(tick);
   }
 
@@ -288,6 +331,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
 
   /// @inheritdoc IFarmingPlugin
   function setIncentive(address newIncentive) external override {
+    require(isInitialized, 'Not initialized');
     bool toConnect = newIncentive != address(0);
     bool accessAllowed;
     if (toConnect) {
@@ -367,9 +411,10 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
     return IAlgebraPlugin.afterModifyPosition.selector;
   }
 
-  function beforeSwap(address, address, bool, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4) {
-    // single pre-swap pool-state snapshot, shared by the oracle write and the fee update
-    (, int24 tick, uint16 fee, ) = _getPoolState();
+  function beforeSwap(address, address, bool zeroToOne, int256, uint160, bool, bytes calldata) external override onlyPool returns (bytes4) {
+    // A single safe pre-swap snapshot supplies both fee state and the adjacent range boundaries. The hook
+    // runs before the pool lock is taken, so safelyGetStateOfAMM is available here.
+    (int24 tick, uint16 fee) = _getSwapState(zeroToOne);
     _writeTimepoint(tick);
     _updateDeviationFee(tick, fee);
     return IAlgebraPlugin.beforeSwap.selector;
@@ -425,7 +470,7 @@ contract NestTWAPFeePlugin is INestTWAPFeePlugin, IAlgebraPlugin, Initializable,
   }
 
   /// @dev Recalculated on EVERY swap, including repeated swaps within one block: the tick moved by a
-  /// previous swap in the same block immediately raises the fee for the next one (anti-sandwich)
+  /// previous swap in the same block immediately changes the fee based on delta between current and TWAP ticks for the next one (anti-sandwich)
   function _updateDeviationFee(int24 tick, uint16 fee) internal virtual {
     uint16 newFee = _getDeviationFee(tick);
     if (newFee != fee) {

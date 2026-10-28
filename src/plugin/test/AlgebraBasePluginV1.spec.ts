@@ -143,6 +143,14 @@ describe('AlgebraBasePluginV1', () => {
       await mockPool.setPlugin(plugin);
     });
 
+    it('does not expose timepoints before initialization', async () => {
+      await expect(plugin.getTimepoints([0])).to.be.revertedWith('Not initialized or not attached');
+    });
+
+    it('does not expose a single timepoint before initialization', async () => {
+      await expect(plugin.getSingleTimepoint(0)).to.be.revertedWith('Not initialized or not attached');
+    });
+
     it('initializes timepoints slot', async () => {
       await initializeAtZeroTick(mockPool);
       checkTimepointEquals(await plugin.timepoints(0), {
@@ -154,6 +162,12 @@ describe('AlgebraBasePluginV1', () => {
 
     describe('#getTimepoints', () => {
       beforeEach(async () => await initializeAtZeroTick(mockPool));
+
+      it('does not expose timepoints after detachment', async () => {
+        await mockPool.setPlugin(ZeroAddress);
+
+        await expect(plugin.getTimepoints([0])).to.be.revertedWith('Not initialized or not attached');
+      });
 
       // zero tick
       it('current tick accumulator increases by tick over time', async () => {
@@ -233,6 +247,12 @@ describe('AlgebraBasePluginV1', () => {
     describe('#getSingleTimepoint', () => {
       beforeEach(async () => await initializeAtZeroTick(mockPool));
 
+      it('does not expose a timepoint after detachment', async () => {
+        await mockPool.setPlugin(ZeroAddress);
+
+        await expect(plugin.getSingleTimepoint(0)).to.be.revertedWith('Not initialized or not attached');
+      });
+
       // zero tick
       it('current tick accumulator increases by tick over time', async () => {
         let { tickCumulative } = await plugin.getSingleTimepoint(0);
@@ -273,6 +293,14 @@ describe('AlgebraBasePluginV1', () => {
 
       it('can prepay with space', async () => {
         await plugin.prepayTimepointsStorageSlots(10, 50);
+      });
+
+      it('can prepay through the final ring-buffer slot', async () => {
+        const finalIndex = 2n ** 16n - 1n;
+        await plugin.prepayTimepointsStorageSlots(finalIndex - 1n, 2);
+
+        expect((await plugin.timepoints(finalIndex - 1n)).blockTimestamp).to.eq(1);
+        expect((await plugin.timepoints(finalIndex)).blockTimestamp).to.eq(1);
       });
 
       it('writes after swap, prepaid after init', async () => {
@@ -318,15 +346,30 @@ describe('AlgebraBasePluginV1', () => {
         });
 
         it('cannot overflow index', async () => {
-          await plugin.prepayTimepointsStorageSlots(0, 10);
-          expect(plugin.prepayTimepointsStorageSlots(11, 2n ** 16n - 5n)).to.be.revertedWithoutReason;
-          expect(plugin.prepayTimepointsStorageSlots(11, 2n ** 16n)).to.be.revertedWithoutReason;
+          const finalIndex = 2n ** 16n - 1n;
+          await expect(plugin.prepayTimepointsStorageSlots(finalIndex - 1n, 3)).to.be.revertedWithoutReason;
         });
       });
     });
   });
 
   describe('#DynamicFeeManager', () => {
+    describe('#getCurrentFee', () => {
+      it('reverts before the plugin oracle is initialized', async () => {
+        await mockPool.setPlugin(plugin);
+
+        await expect(plugin.getCurrentFee()).to.be.revertedWith('Not initialized or not attached');
+      });
+
+      it('reverts after the plugin is detached from the pool', async () => {
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
+        await mockPool.setPlugin(other.address);
+
+        await expect(plugin.getCurrentFee()).to.be.revertedWith('Not initialized or not attached');
+      });
+    });
+
     describe('#adaptiveFee', function () {
       this.timeout(0);
       const liquidity = expandTo18Decimals(1000);
@@ -522,6 +565,8 @@ describe('AlgebraBasePluginV1', () => {
         await mockPluginFactory.setFarmingAddress(wallet);
         const virtualPoolMockFactory = await ethers.getContractFactory('MockTimeVirtualPool');
         virtualPoolMock = (await virtualPoolMockFactory.deploy()) as any as MockTimeVirtualPool;
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
       });
 
       it('set incentive works', async () => {
@@ -604,30 +649,24 @@ describe('AlgebraBasePluginV1', () => {
       });
 
       it('incentive can not be attached if plugin is not attached', async () => {
+        await mockPool.setPlugin(ZeroAddress);
         await expect(plugin.setIncentive(virtualPoolMock)).to.be.revertedWith('Plugin not attached');
       });
 
-      it('incentive attached before initialization', async () => {
-        await mockPool.setPlugin(plugin);
+      it('cannot attach an incentive before the plugin oracle is initialized', async () => {
+        const { plugin: coldPlugin, mockPool: initializedPool, mockPluginFactory: coldPluginFactory } = await pluginFixture();
+        await coldPluginFactory.setFarmingAddress(wallet);
+        await initializedPool.initialize(encodePriceSqrt(1, 1));
+        await initializedPool.setPlugin(coldPlugin);
 
-        await plugin.setIncentive(virtualPoolMock);
-        await mockPool.initialize(encodePriceSqrt(1, 1));
-        await mockPool.mint(wallet.address, wallet.address, -120, 120, 1, '0x');
-        await mockPool.mint(wallet.address, wallet.address, minTick, maxTick, 1, '0x');
-
-        await mockPool.swapToTick(-130);
-
-        expect(await plugin.incentive()).to.be.eq(await virtualPoolMock.getAddress());
-        expect(await plugin.isIncentiveConnected(virtualPoolMock)).to.be.true;
-
-        const tick = (await mockPool.globalState()).tick;
-        expect(await virtualPoolMock.currentTick()).to.be.eq(tick);
-        expect(await virtualPoolMock.timestamp()).to.be.gt(0);
+        expect(await coldPlugin.isInitialized()).to.be.false;
+        expect((await initializedPool.globalState()).pluginConfig).to.eq(0);
+        await expect(coldPlugin.setIncentive(virtualPoolMock)).to.be.revertedWith('Not initialized');
+        expect(await coldPlugin.incentive()).to.eq(ZeroAddress);
+        expect((await initializedPool.globalState()).pluginConfig).to.eq(0);
       });
 
       it('incentive attached after initialization', async () => {
-        await mockPool.setPlugin(plugin);
-        await mockPool.initialize(encodePriceSqrt(1, 1));
         await plugin.setIncentive(virtualPoolMock);
 
         await mockPool.mint(wallet.address, wallet.address, -120, 120, 1, '0x');
@@ -685,6 +724,8 @@ describe('AlgebraBasePluginV1', () => {
         await mockPluginFactory.setFarmingAddress(wallet);
         const virtualPoolMockFactory = await ethers.getContractFactory('MockTimeVirtualPool');
         virtualPoolMock = (await virtualPoolMockFactory.deploy()) as any as MockTimeVirtualPool;
+        await mockPool.setPlugin(plugin);
+        await initializeAtZeroTick(mockPool);
       });
 
       it('true with active incentive', async () => {

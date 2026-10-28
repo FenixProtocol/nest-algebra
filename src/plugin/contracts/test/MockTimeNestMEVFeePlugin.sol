@@ -13,6 +13,10 @@ contract MockTimeNestMEVFeePlugin is NestMEVFeePlugin {
     }
   }
 
+  function blockStartState() external view returns (uint32 startBlock, int24 startTick) {
+    return (_blockStartBlock, _blockStartTick);
+  }
+
   function _blockTimestamp() internal view override returns (uint32) {
     return uint32(time);
   }

@@ -49,9 +49,9 @@ constructor(address _factory) public
 ### createCustomPool
 
 ```solidity
-function createCustomPool(address deployer, address creator, address tokenA, address tokenB, bytes data) external returns (address customPool)
+function createCustomPool(address deployer, address creator, address tokenA, address tokenB) external returns (address customPool)
 ```
-**Selector**: `0xdbbf3db4`
+**Selector**: `0x13b6a2d2`
 
 Creates a custom pool
 
@@ -61,7 +61,6 @@ Creates a custom pool
 | creator | address | The initiator of custom pool creation |
 | tokenA | address | One of the two tokens in the desired pool |
 | tokenB | address | The other of the two tokens in the desired pool |
-| data | bytes | Additional data for plugin creation |
 
 **Returns:**
 
@@ -100,9 +99,9 @@ Changes whitelist status for a batch of custom pool deployers
 ### beforeCreatePoolHook
 
 ```solidity
-function beforeCreatePoolHook(address pool, address creator, address deployer, address token0, address token1, bytes data) external returns (address)
+function beforeCreatePoolHook(address pool, address creator, address deployer, address token0, address token1) external returns (address)
 ```
-**Selector**: `0x1d0338d9`
+**Selector**: `0xf13f29fb`
 
 Called before pool creation to optionally deploy a plugin.
 
@@ -113,7 +112,6 @@ Called before pool creation to optionally deploy a plugin.
 | deployer | address | The custom pool deployer, or address(0) for classic pools |
 | token0 | address | First token of the pool |
 | token1 | address | Second token of the pool |
-| data | bytes | Additional data for plugin creation |
 
 **Returns:**
 

@@ -6,6 +6,7 @@ import { abi as POOL_ABI, bytecode as POOL_BYTECODE } from '@cryptoalgebra/integ
 import { AlgebraPool } from '@cryptoalgebra/integral-core/typechain';
 import { expect } from './shared/expect';
 import { customPoolEnvironmentFixture, sortAddresses, TEST_ADDRESSES } from './shared/customPoolFixtures';
+import { MAX_SQRT_RATIO } from './shared/utilities';
 
 const SQRT_PRICE_1 = 79228162514264337593543950336n;
 
@@ -68,10 +69,60 @@ for (const [product, fixture] of [
       const poolAddress = await factory.createPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
       await factory.createPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
 
-      const pluginAddress = await nestFactory.createPluginForExistingPool.staticCall(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
-      await nestFactory.createPluginForExistingPool(TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
+      const pluginAddress = await nestFactory.createPluginForExistingPool.staticCall(ZeroAddress, TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
+      await nestFactory.createPluginForExistingPool(ZeroAddress, TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
       expect(await nestFactory.pluginByPool(poolAddress)).to.eq(pluginAddress);
-      await expect(nestFactory.createPluginForExistingPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1])).to.be.revertedWith('Already created');
+      await expect(nestFactory.createPluginForExistingPool(ZeroAddress, TEST_ADDRESSES[0], TEST_ADDRESSES[1])).to.be.revertedWith('Already created');
+    });
+
+    it('creates and activates a plugin for an already initialized custom pool', async () => {
+      const { factory, entryPoint, nestFactory, implementationName } = await loadFixture(fixture);
+      const basePluginImplementation = await (await ethers.getContractFactory('AlgebraBasePluginV1')).deploy();
+      const customPoolDeployer = await (
+        await ethers.getContractFactory('BaseV1PluginFactory')
+      ).deploy(await factory.getAddress(), await entryPoint.getAddress(), await basePluginImplementation.getAddress());
+      await entryPoint.setCustomPoolDeployer(await customPoolDeployer.getAddress(), true);
+
+      const poolAddress = await customPoolDeployer.deployCustomPool.staticCall(TEST_ADDRESSES[1], TEST_ADDRESSES[0], SQRT_PRICE_1);
+      await customPoolDeployer.deployCustomPool(TEST_ADDRESSES[1], TEST_ADDRESSES[0], SQRT_PRICE_1);
+      const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(poolAddress) as any as AlgebraPool;
+      const originalPlugin = await pool.plugin();
+      const newPluginAddress = await nestFactory.createPluginForExistingPool.staticCall(
+        await customPoolDeployer.getAddress(),
+        TEST_ADDRESSES[1],
+        TEST_ADDRESSES[0]
+      );
+      await nestFactory.createPluginForExistingPool(await customPoolDeployer.getAddress(), TEST_ADDRESSES[1], TEST_ADDRESSES[0]);
+
+      expect(newPluginAddress).to.not.eq(originalPlugin);
+      expect(await nestFactory.pluginByPool(poolAddress)).to.eq(newPluginAddress);
+      expect(await pool.plugin()).to.eq(originalPlugin);
+
+      const newPlugin = await ethers.getContractAt(implementationName, newPluginAddress);
+      expect(await newPlugin.pool()).to.eq(poolAddress);
+      expect(await newPlugin.isInitialized()).to.be.false;
+
+      await customPoolDeployer.setPlugin(poolAddress, newPluginAddress);
+      await newPlugin['initialize()']();
+
+      expect(await pool.plugin()).to.eq(newPluginAddress);
+      expect(await newPlugin.isInitialized()).to.be.true;
+      expect((await pool.globalState()).pluginConfig).to.eq(await newPlugin.defaultPluginConfig());
+      expect(await newPlugin.getCurrentFee()).to.eq(500);
+    });
+
+    it('does not resolve an existing custom pool under a different deployer', async () => {
+      const { factory, entryPoint, nestFactory } = await loadFixture(fixture);
+      const basePluginImplementation = await (await ethers.getContractFactory('AlgebraBasePluginV1')).deploy();
+      const customPoolDeployer = await (
+        await ethers.getContractFactory('BaseV1PluginFactory')
+      ).deploy(await factory.getAddress(), await entryPoint.getAddress(), await basePluginImplementation.getAddress());
+      await entryPoint.setCustomPoolDeployer(await customPoolDeployer.getAddress(), true);
+      await customPoolDeployer.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
+
+      await expect(nestFactory.createPluginForExistingPool(await nestFactory.getAddress(), TEST_ADDRESSES[0], TEST_ADDRESSES[1])).to.be.revertedWith(
+        'Pool not exist'
+      );
     });
 
     it('creates a guarded custom pool and plugin through the entry point', async () => {
@@ -79,43 +130,66 @@ for (const [product, fixture] of [
       const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
       const expectedPool = await factory.computeCustomPoolAddress(await nestFactory.getAddress(), token0, token1);
 
-      expect(await nestFactory.deployCustomPool.staticCall(token1, token0, '0x1234')).to.eq(expectedPool);
-      await expect(nestFactory.deployCustomPool(token1, token0, '0x1234')).to.emit(factory, 'CustomPool');
+      expect(await nestFactory.deployCustomPool.staticCall(token1, token0, SQRT_PRICE_1)).to.eq(expectedPool);
+      await expect(nestFactory.deployCustomPool(token1, token0, SQRT_PRICE_1)).to.emit(factory, 'CustomPool');
 
       expect(await nestFactory.isCustomPool(expectedPool)).to.be.true;
       const pluginAddress = await nestFactory.pluginByPool(expectedPool);
       const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(expectedPool) as any as AlgebraPool;
       expect(await pool.plugin()).to.eq(pluginAddress);
-      expect(await (await ethers.getContractAt(implementationName, pluginAddress)).pool()).to.eq(expectedPool);
+      const plugin = await ethers.getContractAt(implementationName, pluginAddress);
+      expect(await plugin.pool()).to.eq(expectedPool);
+      expect(await plugin.isInitialized()).to.be.true;
+      expect((await pool.globalState()).price).to.eq(SQRT_PRICE_1);
+      await expect(pool.initialize(SQRT_PRICE_1)).to.be.revertedWithCustomError(pool, 'alreadyInitialized');
+    });
+
+    it('atomically rolls back custom pool creation when the initial price is invalid', async () => {
+      const { factory, nestFactory } = await loadFixture(fixture);
+      const [token0, token1] = sortAddresses(TEST_ADDRESSES[0], TEST_ADDRESSES[1]);
+      const deployer = await nestFactory.getAddress();
+      const expectedPool = await factory.computeCustomPoolAddress(deployer, token0, token1);
+      const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(expectedPool) as any as AlgebraPool;
+
+      await expect(nestFactory.deployCustomPool(token0, token1, MAX_SQRT_RATIO)).to.be.revertedWithCustomError(pool, 'priceOutOfRange');
+      expect(await factory.customPoolByPair(deployer, token0, token1)).to.eq(ZeroAddress);
+      expect(await factory.deployerByPool(expectedPool)).to.eq(ZeroAddress);
+      expect(await nestFactory.pluginByPool(expectedPool)).to.eq(ZeroAddress);
+      expect(await nestFactory.isCustomPool(expectedPool)).to.be.false;
+      expect(await ethers.provider.getCode(expectedPool)).to.eq('0x');
+
+      await nestFactory.deployCustomPool(token0, token1, SQRT_PRICE_1);
+      expect((await pool.globalState()).price).to.eq(SQRT_PRICE_1);
     });
 
     it('enforces custom deployer controls', async () => {
       const [, other] = await ethers.getSigners();
       const { nestFactory } = await loadFixture(fixture);
 
-      await expect(nestFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x')).to.be.revertedWith(
+      await expect(nestFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1)).to.be.revertedWith(
         `AccessControl: account ${other.address.toLowerCase()} is missing role ${await nestFactory.CUSTOM_POOL_DEPLOYER()}`
       );
 
       await nestFactory.setPublicPoolCreationMode(true);
-      await nestFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
+      await nestFactory.connect(other).deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
     });
 
     it('restricts custom hooks and manages only its own custom pools', async () => {
       const [, other] = await ethers.getSigners();
       const { factory, nestFactory } = await loadFixture(fixture);
       await expect(
-        nestFactory.beforeCreatePoolHook(TEST_ADDRESSES[0], other.address, await nestFactory.getAddress(), TEST_ADDRESSES[1], TEST_ADDRESSES[2], '0x')
+        nestFactory.beforeCreatePoolHook(TEST_ADDRESSES[0], other.address, await nestFactory.getAddress(), TEST_ADDRESSES[1], TEST_ADDRESSES[2])
       ).to.be.revertedWith('Only entry point');
 
-      const poolAddress = await nestFactory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
-      await nestFactory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], '0x');
+      const poolAddress = await nestFactory.deployCustomPool.staticCall(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
+      await nestFactory.deployCustomPool(TEST_ADDRESSES[0], TEST_ADDRESSES[1], SQRT_PRICE_1);
       const pool = (await ethers.getContractFactory(POOL_ABI, POOL_BYTECODE)).attach(poolAddress) as any as AlgebraPool;
 
       await nestFactory.setTickSpacing(poolAddress, 100);
       expect(await pool.tickSpacing()).to.eq(100);
       await nestFactory.setPlugin(poolAddress, ZeroAddress);
       expect(await pool.plugin()).to.eq(ZeroAddress);
+      expect(await nestFactory.pluginByPool(poolAddress)).to.eq(ZeroAddress);
       await expect(nestFactory.connect(other).setPlugin(poolAddress, ZeroAddress)).to.be.revertedWith('Ownable: caller is not the owner');
       await expect(nestFactory.setFee(await factory.getAddress(), 500)).to.be.revertedWith('Unknown custom pool');
     });

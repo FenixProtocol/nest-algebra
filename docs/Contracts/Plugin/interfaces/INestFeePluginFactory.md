@@ -212,9 +212,9 @@ Whether a pool was created through this factory&#x27;s custom-pool flow.
 ### deployCustomPool
 
 ```solidity
-function deployCustomPool(address tokenA, address tokenB, bytes data) external returns (address customPool)
+function deployCustomPool(address tokenA, address tokenB, uint160 sqrtPriceX96) external returns (address customPool)
 ```
-**Selector**: `0xa0149a1b`
+**Selector**: `0xf33f6bf9`
 
 Deploys a custom pool and its Nest fee plugin through the configured entry point.
 
@@ -222,7 +222,7 @@ Deploys a custom pool and its Nest fee plugin through the configured entry point
 | ---- | ---- | ----------- |
 | tokenA | address |  |
 | tokenB | address |  |
-| data | bytes |  |
+| sqrtPriceX96 | uint160 |  |
 
 **Returns:**
 
@@ -233,14 +233,15 @@ Deploys a custom pool and its Nest fee plugin through the configured entry point
 ### createPluginForExistingPool
 
 ```solidity
-function createPluginForExistingPool(address token0, address token1) external returns (address)
+function createPluginForExistingPool(address deployer, address token0, address token1) external returns (address)
 ```
-**Selector**: `0x27733026`
+**Selector**: `0x376e0cde`
 
 Create plugin for already existing pool
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
+| deployer | address | The address of the deployer of the pool, for classic pools use zero address, for custom pools - custom plugin deployer address |
 | token0 | address | The address of first token in pool |
 | token1 | address | The address of second token in pool |
 

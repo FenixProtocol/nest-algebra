@@ -26,6 +26,8 @@ interface ISwapRouter is IAlgebraSwapCallback {
     function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 
     struct ExactInputParams {
+        /// @dev The swap path encoded as `tokenIn, deployer, tokenOut` for each hop.
+        /// Use address(0) as the deployer for classic pools
         bytes path;
         address recipient;
         uint256 deadline;
@@ -56,6 +58,8 @@ interface ISwapRouter is IAlgebraSwapCallback {
     function exactOutputSingle(ExactOutputSingleParams calldata params) external payable returns (uint256 amountIn);
 
     struct ExactOutputParams {
+        /// @dev The swap path encoded in reverse order as `tokenOut, deployer, tokenIn` for each hop.
+        /// Use address(0) as the deployer for classic pools
         bytes path;
         address recipient;
         uint256 deadline;

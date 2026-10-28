@@ -52,11 +52,6 @@
           "internalType": "address",
           "name": "token1",
           "type": "address"
-        },
-        {
-          "internalType": "bytes",
-          "name": "data",
-          "type": "bytes"
         }
       ],
       "name": "beforeCreatePoolHook",

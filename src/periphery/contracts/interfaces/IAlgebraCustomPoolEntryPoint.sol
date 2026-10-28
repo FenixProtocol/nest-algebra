@@ -24,14 +24,12 @@ interface IAlgebraCustomPoolEntryPoint is IAlgebraPluginFactory {
     /// @param creator The initiator of custom pool creation
     /// @param tokenA One of the two tokens in the desired pool
     /// @param tokenB The other of the two tokens in the desired pool
-    /// @param data Additional data for plugin creation
     /// @return customPool The newly created custom pool
     function createCustomPool(
         address deployer,
         address creator,
         address tokenA,
-        address tokenB,
-        bytes calldata data
+        address tokenB
     ) external returns (address customPool);
 
     /// @notice Changes the tick spacing value in a custom pool

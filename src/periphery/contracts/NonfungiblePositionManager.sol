@@ -153,6 +153,7 @@ contract NonfungiblePositionManager is
         checkDeadline(params.deadline)
         returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)
     {
+        require(params.token0 < params.token1, 'Invalid order of tokens');
         return _mintAlgebraPosition(params);
     }
 
@@ -320,6 +321,7 @@ contract NonfungiblePositionManager is
         external
         payable
         override
+        nonReentrant
         isAuthorizedForToken(params.tokenId)
         checkDeadline(params.deadline)
         returns (uint256 amount0, uint256 amount1)
@@ -369,7 +371,14 @@ contract NonfungiblePositionManager is
     /// @inheritdoc INonfungiblePositionManager
     function collect(
         CollectParams calldata params
-    ) external payable override isAuthorizedForToken(params.tokenId) returns (uint256 amount0, uint256 amount1) {
+    )
+        external
+        payable
+        override
+        nonReentrant
+        isAuthorizedForToken(params.tokenId)
+        returns (uint256 amount0, uint256 amount1)
+    {
         require(params.amount0Max > 0 || params.amount1Max > 0);
         // allow collecting to the nft position manager address with address 0
         address recipient = params.recipient == address(0) ? address(this) : params.recipient;
@@ -419,7 +428,7 @@ contract NonfungiblePositionManager is
     }
 
     /// @inheritdoc INonfungiblePositionManager
-    function burn(uint256 tokenId) external payable override isAuthorizedForToken(tokenId) {
+    function burn(uint256 tokenId) external payable override nonReentrant isAuthorizedForToken(tokenId) {
         Position storage position = _positions[tokenId];
         require(position.liquidity | position.tokensOwed0 | position.tokensOwed1 == 0, 'Not cleared');
 

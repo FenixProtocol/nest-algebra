@@ -13,7 +13,7 @@ interface INestMEVFeeManager {
   /// @param deadband    D, ticks — gaps within D pay no LVR fee (the structural no-arb band)
   /// @param shortTwapWindow short self-TWAP window for the sandwich term, seconds
   /// @param spotIndex   configured HyperCore spot-pair index
-  /// @param priceExp    power-of-ten divisor mapping the configured raw feed to the Algebra ratio
+  /// @param priceExp    signed decimal exponent: ratio=raw*10^-exp, or ratio=10^exp/raw when inverted
   /// @param inverted    precompile quote orientation
   /// @param maxConfigGap activation-time bound (ticks) on |poolTick - oracleTick|
   event OracleConfigChanged(
@@ -21,7 +21,7 @@ interface INestMEVFeeManager {
     uint32 deadband,
     uint32 shortTwapWindow,
     uint32 spotIndex,
-    uint8 priceExp,
+    int8 priceExp,
     bool inverted,
     uint32 maxConfigGap
   );
@@ -30,20 +30,21 @@ interface INestMEVFeeManager {
   function mevFeeConfig()
     external
     view
-    returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, uint8 priceExp, bool inverted, uint32 maxConfigGap);
+    returns (uint64 klvr, uint32 deadband, uint32 shortTwapWindow, uint32 spotIndex, int8 priceExp, bool inverted, uint32 maxConfigGap);
 
   /// @notice Enable, retune, or disable (klvr=0) the Nest MEV oracle term.
   /// @dev Callable by the plugin factory or holders of the DEVIATION_FEE_MANAGER role. When enabling
   /// (klvr > 0) it performs an activation-time gap check: the live |poolTick - oracleTick| must be
   /// <= maxConfigGap. This rejects structurally valid observations that are outside the configured arming
   /// bound; it does not independently establish that an in-bound feed is economically correct. Enforces
-  /// klvr <= MAX_KLVR (slope <= 1.0).
+  /// klvr <= MAX_KLVR (slope <= 0.94), and the configured deadband must preserve an arbitrage
+  /// edge both when the LVR term starts and when the total fee reaches its cap.
   function setOracleConfig(
     uint64 klvr,
     uint32 deadband,
     uint32 shortTwapWindow,
     uint32 spotIndex,
-    uint8 priceExp,
+    int8 priceExp,
     bool inverted,
     uint32 maxConfigGap
   ) external;
